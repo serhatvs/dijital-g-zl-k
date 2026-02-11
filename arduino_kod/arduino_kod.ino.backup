@@ -25,8 +25,7 @@ float enlem = 0.0;   // Latitude
 float boylam = 0.0;  // Longitude
 bool bluetoothBagli = false;
 unsigned long sonVeriMillis = 0;
-bool testModu = false;  // Test modu aktif mi?
-String sonDurum = "";   // Son LCD durumu (gereksiz clear'dan kaçınmak için)
+int testAdim = 0;    // Test senaryosu adım sayacı
 
 // ==================== SETUP ====================
 void setup() {
@@ -34,7 +33,6 @@ void setup() {
   Serial.begin(9600);
   Serial.println("=== GPS Hiz ve Mesafe Sistemi ===");
   Serial.println("Bluetooth baglantisi bekleniyor...");
-  Serial.println("Test icin 'TEST' yazin");
   
   // Bluetooth başlat
   bluetooth.begin(9600); // HC-05 default baud rate
@@ -49,8 +47,6 @@ void setup() {
   
   delay(2000);
   lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("BT Bekleniyor...");
 }
 
 // ==================== LOOP ====================
@@ -61,10 +57,8 @@ void loop() {
   // 2. LCD'yi güncelle
   lcdGuncelle();
   
-  // 3. Bağlantı durumunu kontrol et (test modunda değilse)
-  if (!testModu) {
-    baglantiKontrol();
-  }
+  // 3. Bağlantı durumunu kontrol et
+  baglantiKontrol();
   
   delay(100); // CPU yükünü azalt
 }
@@ -101,15 +95,15 @@ void bluetoothOku() {
         } else {
           // Veriyi ayrıştır
           veriAyristir(gelenVeri);
-          
-          // Son veri zamanını güncelle
-          sonVeriMillis = millis();
-          bluetoothBagli = true;
-          testModu = false;
         }
+
+        // Son veri zamanını güncelle
+        sonVeriMillis = millis();
         
         // Buffer'ı temizle
         gelenVeri = "";
+        
+        bluetoothBagli = true;
       }
     } else {
       // Karakteri buffer'a ekle
@@ -155,15 +149,15 @@ void veriAyristir(String veri) {
     }
     
     // Debug: Ayrıştırılan değerleri göster
-    Serial.print("Ayristirildi -> Hiz: ");
+    Serial.print("Ayrıştırıldı → Hız: ");
     Serial.print(hiz, 1);
     Serial.print(" km/h | Mesafe: ");
     Serial.print(mesafe, 2);
     Serial.print(" km");
     if (latIndex != -1) {
-      Serial.print(" | GPS: ");
+      Serial.print(" | Enlem: ");
       Serial.print(enlem, 6);
-      Serial.print(", ");
+      Serial.print(" | Boylam: ");
       Serial.print(boylam, 6);
     }
     Serial.println();
@@ -176,7 +170,6 @@ void veriAyristir(String veri) {
   if (speedIndex != -1 && distIndex != -1) {
     hiz = veri.substring(speedIndex + 6, distIndex).toFloat();
     mesafe = veri.substring(distIndex + 6).toFloat();
-    Serial.println("Format: SPEED=X,DIST=Y");
     return;
   }
 
@@ -185,44 +178,28 @@ void veriAyristir(String veri) {
   if (speedIndex != -1 && distIndex != -1) {
     hiz = veri.substring(speedIndex + 2, distIndex).toFloat();
     mesafe = veri.substring(distIndex + 3).toFloat();
-    Serial.println("Format: S=X,D=Y");
     return;
   }
 
   // Basit format: 45.5;1.32
   if (veri.indexOf(';') != -1) {
-    int noktaliVirguIndex = veri.indexOf(';');
-    hiz = veri.substring(0, noktaliVirguIndex).toFloat();
-    mesafe = veri.substring(noktaliVirguIndex + 1).toFloat();
-    Serial.println("Format: X;Y");
+    veriAyristir_Basit(veri);
     return;
   }
 
-  Serial.println("HATA: Veri formati hatali!");
-  Serial.println("Ornek: SPEED:45.50,DIST:1.32");
+  Serial.println("HATA: Veri formatı hatalı! Ornek: SPEED:45.50,DIST:1.32");
 }
 
 /**
  * LCD ekranı günceller
  */
 void lcdGuncelle() {
-  // Hiç veri gelmediyse bekleme ekranı göster
-  bool veriGelmis = (hiz != 0.0 || mesafe != 0.0 || enlem != 0.0 || boylam != 0.0);
-  
-  if (veriGelmis) {
-    // Veri varsa göster (bağlantı kesilse bile)
-    String yeniDurum = "DATA";
-    if (yeniDurum != sonDurum) {
-      lcd.clear();
-      sonDurum = yeniDurum;
-    }
-    
+  if (bluetoothBagli) {
     // İlk satır: Hız
     lcd.setCursor(0, 0);
     lcd.print("Hiz:");
     
     // Hız değerini sağa hizalı göster
-    lcd.setCursor(5, 0);
     if (hiz < 10) {
       lcd.print("  ");
     } else if (hiz < 100) {
@@ -235,15 +212,7 @@ void lcdGuncelle() {
     lcd.setCursor(0, 1);
     lcd.print("Mesafe: ");
     lcd.print(mesafe, 2);
-    lcd.print(" km ");
-  } else if (sonDurum != "WAIT") {
-    // Bağlantı bekleniyor ekranı (sadece hiç veri gelmediyse)
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("BT Bekleniyor...");
-    lcd.setCursor(0, 1);
-    lcd.print("TEST -> Test Modu");
-    sonDurum = "WAIT";
+    lcd.print(" km  ");
   }
 }
 
@@ -253,102 +222,123 @@ void lcdGuncelle() {
 void baglantiKontrol() {
   unsigned long simdikiZaman = millis();
   
-  // 8 saniyedir veri gelmiyorsa bağlantı kesilmiş sayılır
-  if (bluetoothBagli && (simdikiZaman - sonVeriMillis > 8000)) {
+  // 5 saniyedir veri gelmiyorsa bağlantı kesilmiş sayılır
+  if (bluetoothBagli && (simdikiZaman - sonVeriMillis > 5000)) {
     bluetoothBagli = false;
     
-    // Sadece Serial'a log yaz (LCD'de son değerler kalsın)
-    Serial.println("\n=== BAGLANTI KESILDI ===");
-    Serial.print("Son Hiz: ");
+    // Bağlantı kesildi ekranı - son bilgiler
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Baglanti Kesildi");
+    lcd.setCursor(0, 1);
+    lcd.print("H:");
+    lcd.print(hiz, 1);
+    lcd.print(" M:");
+    lcd.print(mesafe, 2);
+    
+    Serial.println("UYARI: Bluetooth bağlantısı kesildi!");
+    Serial.print("Son Hız: ");
     Serial.print(hiz, 1);
     Serial.print(" km/h | Son Mesafe: ");
     Serial.print(mesafe, 2);
     Serial.println(" km");
-    
     if (enlem != 0.0 || boylam != 0.0) {
-      Serial.print("Son GPS Konum: ");
+      Serial.print("Son Konum: ");
       Serial.print(enlem, 6);
       Serial.print(", ");
       Serial.println(boylam, 6);
     }
-    Serial.println("========================\n");
   }
 }
 
 // ==================== TEST SENARYOSU ====================
-
-// Test verileri Flash belleğe al (RAM'i korumak için)
-const char testVeri0[] PROGMEM = "SPEED:0.00,DIST:0.00,LAT:41.036758,LON:28.985033";
-const char testVeri1[] PROGMEM = "SPEED:15.50,DIST:0.04,LAT:41.037012,LON:28.985234";
-const char testVeri2[] PROGMEM = "SPEED:32.80,DIST:0.12,LAT:41.037456,LON:28.985678";
-const char testVeri3[] PROGMEM = "SPEED:45.20,DIST:0.28,LAT:41.038123,LON:28.986245";
-const char testVeri4[] PROGMEM = "SPEED:52.00,DIST:0.51,LAT:41.038934,LON:28.987012";
-const char testVeri5[] PROGMEM = "SPEED:48.70,DIST:0.78,LAT:41.039678,LON:28.987834";
-const char testVeri6[] PROGMEM = "SPEED:35.40,DIST:1.02,LAT:41.040234,LON:28.988456";
-const char testVeri7[] PROGMEM = "SPEED:25.10,DIST:1.18,LAT:41.040612,LON:28.988912";
-const char testVeri8[] PROGMEM = "SPEED:12.30,DIST:1.28,LAT:41.040834,LON:28.989234";
-const char testVeri9[] PROGMEM = "SPEED:0.00,DIST:1.32,LAT:41.041002,LON:28.989456";
-
-const char* const testVerileri[] PROGMEM = {
-  testVeri0, testVeri1, testVeri2, testVeri3, testVeri4,
-  testVeri5, testVeri6, testVeri7, testVeri8, testVeri9
-};
 
 /**
  * Test senaryosu başlatır - sıralı GPS verileri gönderir
  * Bluetooth terminalinden "TEST" yazarak başlatın
  */
 void testSenaryosuBaslat() {
-  Serial.println("\n==============================");
-  Serial.println("  TEST SENARYOSU BASLADI");
-  Serial.println("==============================");
-  Serial.println("10 adimlik GPS simulasyonu");
-  Serial.println("Taksim -> 1.32 km mesafe");
-  Serial.println("------------------------------\n");
+  Serial.println("\n=== TEST SENARYOSU BAŞLADI ===");
+  Serial.println("10 saniyelik GPS simülasyonu...");
   
-  // Test modunu aktif et
-  testModu = true;
-  bluetoothBagli = true;
-  sonVeriMillis = millis();
-  
-  // Buffer Flash'tan veri okumak için
-  char buffer[80];
+  // Test verileri: İstanbul Taksim'den başlayarak hareket eden bir araç simülasyonu
+  // Format: SPEED:hiz,DIST:mesafe,LAT:enlem,LON:boylam
+  String testVerileri[] = {
+    "SPEED:0.00,DIST:0.00,LAT:41.036758,LON:28.985033",     // Duruş - Taksim
+    "SPEED:15.50,DIST:0.04,LAT:41.037012,LON:28.985234",    // Yavaş başlangıç
+    "SPEED:32.80,DIST:0.12,LAT:41.037456,LON:28.985678",    // Hızlanma
+    "SPEED:45.20,DIST:0.28,LAT:41.038123,LON:28.986245",    // Normal hız
+    "SPEED:52.00,DIST:0.51,LAT:41.038934,LON:28.987012",    // Hızlı
+    "SPEED:48.70,DIST:0.78,LAT:41.039678,LON:28.987834",    // Yavaşlama
+    "SPEED:35.40,DIST:1.02,LAT:41.040234,LON:28.988456",    // Trafik
+    "SPEED:25.10,DIST:1.18,LAT:41.040612,LON:28.988912",    // Yavaşlama
+    "SPEED:12.30,DIST:1.28,LAT:41.040834,LON:28.989234",    // Durma yakın
+    "SPEED:0.00,DIST:1.32,LAT:41.041002,LON:28.989456"      // Duruş - hedef
+  };
   
   int testSayisi = 10;
   
+  // Bağlantıyı aktif yap
+  bluetoothBagli = true;
+  
   for (int i = 0; i < testSayisi; i++) {
-    // Flash'tan veriyi RAM'e kopyala
-    strcpy_P(buffer, (char*)pgm_read_word(&(testVerileri[i])));
-    
-    Serial.print("[");
+    Serial.print("Test ");
     Serial.print(i + 1);
     Serial.print("/");
     Serial.print(testSayisi);
-    Serial.print("] ");
-    Serial.println(buffer);
+    Serial.print(": ");
+    Serial.println(testVerileri[i]);
     
     // Veriyi işle
-    veriAyristir(String(buffer));
+    veriAyristir(testVerileri[i]);
     
-    // Bağlantı zamanını güncelle
+    // Bağlantı zamanını güncelle (timeout olmasın)
     sonVeriMillis = millis();
     
-    // LCD'yi güncelle
+    // LCD güncelle
+    lcd.clear();
     lcdGuncelle();
     
-    // 1 saniye bekle
+    // 1 saniye bekle (gerçek GPS güncellemesi gibi)
     delay(1000);
   }
   
-  Serial.println("\n==============================");
-  Serial.println("     TEST TAMAMLANDI!");
-  Serial.println("==============================");
-  Serial.println("Son degerler LCD'de gorunuyor");
-  Serial.println("Yeni veri gonderebilirsiniz\n");
-  
-  // Test modundan çık ama değerleri koru
-  testModu = false;
-  // bluetoothBagli true kalsın, timeout 20 saniye olsun
-  sonVeriMillis = millis() + 15000; // 15 saniye ek süre
+  Serial.println("=== TEST TAMAMLANDI ===");
+  Serial.println("Normal moda dönülüyor...\n");
 }
 
+// ==================== ALTERNATİF VERİ AYRIŞTIRMA ====================
+
+/**
+ * Alternatif ayrıştırma yöntemi (daha basit format için)
+ * Format: 45.5;1.32
+ */
+void veriAyristir_Basit(String veri) {
+  int noktaliVirguIndex = veri.indexOf(';');
+  
+  if (noktaliVirguIndex != -1) {
+    hiz = veri.substring(0, noktaliVirguIndex).toFloat();
+    mesafe = veri.substring(noktaliVirguIndex + 1).toFloat();
+  }
+}
+
+/**
+ * JSON formatı için ayrıştırma
+ * Format: {"speed":45.5,"dist":1.32}
+ * Not: ArduinoJson kütüphanesi gerektirir
+ */
+/*
+#include <ArduinoJson.h>
+
+void veriAyristir_JSON(String veri) {
+  StaticJsonDocument<200> doc;
+  DeserializationError error = deserializeJson(doc, veri);
+  
+  if (!error) {
+    hiz = doc["speed"];
+    mesafe = doc["dist"];
+  } else {
+    Serial.println("JSON parse hatası!");
+  }
+}
+*/
