@@ -90,19 +90,50 @@ class GPSManager(private val context: Context) {
      * Location nesnesini LocationData'ya dönüştürür ve mesafe hesaplar
      */
     private fun processLocation(location: Location): LocationData {
-        // Hız (m/s → km/h)
-        val speedMS = if (location.hasSpeed()) location.speed else 0f
-        val speedKMH = (speedMS * 3.6).toFloat()
-
-        // Mesafe hesaplama
+        var speedKMH = 0f
+        var distance = 0.0
+        
+        // Mesafe ve hız hesaplama
         if (lastLocation != null) {
-            val distance = calculateDistance(
+            distance = calculateDistance(
                 lastLocation!!.latitude,
                 lastLocation!!.longitude,
                 location.latitude,
                 location.longitude
             )
-            totalDistance += distance
+            
+            // Zaman farkı (saniye)
+            val timeDiffSeconds = (location.time - lastLocation!!.time) / 1000.0
+            
+            // EMüLATÖR FİLTRESİ: Mantıksız sıçramaları yoksay
+            // 1. Çok kısa zaman aralığı (< 0.3 saniye) - güncelleme çok hızlı
+            // 2. Çok büyük mesafe (> 0.1 km = 100m) - teleportasyon
+            val isSuspiciousJump = timeDiffSeconds < 0.3 || distance > 0.1
+            
+            if (!isSuspiciousJump && timeDiffSeconds > 0) {
+                // Normal güncelleme - mesafe ekle
+                totalDistance += distance
+                
+                // Hız hesapla (mesafe/zaman)
+                if (distance > 0) {
+                    // km / (s/3600) = km/h
+                    val calculatedSpeed = ((distance / timeDiffSeconds) * 3600).toFloat()
+                    // Maksimum hız sınırı: 200 km/h (emulator hatalarını engelle)
+                    speedKMH = minOf(calculatedSpeed, 200f)
+                }
+            }
+        }
+        
+        // Eğer location.speed varsa tercih et (gerçek cihazlarda daha doğru)
+        val speedMS = if (location.hasSpeed() && location.speed > 0) {
+            location.speed
+        } else {
+            (speedKMH / 3.6).toFloat()
+        }
+        
+        // Hızı güncelle
+        if (location.hasSpeed() && location.speed > 0) {
+            speedKMH = minOf((speedMS * 3.6).toFloat(), 200f)
         }
 
         lastLocation = location
@@ -190,10 +221,10 @@ data class LocationData(
 
     /**
      * Arduino'ya gönderilecek veri formatı
-     * Format: SPEED:45.50,DIST:1.32\n
+     * Format: SPEED:45.50,DIST:1.32,LAT:41.008240,LON:28.978359\n
      */
     fun toBluetoothData(): String {
-        return "SPEED:${getFormattedSpeed()},DIST:${getFormattedDistance()}\n"
+        return "SPEED:${getFormattedSpeed()},DIST:${getFormattedDistance()},LAT:%.6f,LON:%.6f\n".format(latitude, longitude)
     }
 }
 

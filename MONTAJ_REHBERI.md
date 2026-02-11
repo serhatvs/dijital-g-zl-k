@@ -180,6 +180,7 @@ void setup() {
   Wire.begin();
 }
 
+
 void loop() {
   byte error, address;
   int nDevices = 0;

@@ -131,7 +131,7 @@ class SpeedViewModel(application: Application) : AndroidViewModel(application) {
     /**
      * GPS konum güncellemelerini başlat
      */
-    private fun startGPS() {
+    fun startGPS() {
         locationJob?.cancel()
         
         locationJob = viewModelScope.launch {

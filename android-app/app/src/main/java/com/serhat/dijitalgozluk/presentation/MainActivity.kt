@@ -37,6 +37,7 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "İzinler verildi", Toast.LENGTH_SHORT).show()
             viewModel.loadPairedDevices()
             viewModel.updateGpsEnabled(isLocationEnabled())
+            viewModel.startGPS()  // GPS'i başlat
         } else {
             Toast.makeText(this, "İzinler gerekli!", Toast.LENGTH_LONG).show()
         }
@@ -66,6 +67,11 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         viewModel.refreshBluetoothState()
         viewModel.updateGpsEnabled(isLocationEnabled())
+        
+        // GPS izni varsa konum güncellemelerini başlat
+        if (hasLocationPermission()) {
+            viewModel.startGPS()
+        }
     }
 
     private fun setupUI() {
@@ -196,6 +202,13 @@ class MainActivity : AppCompatActivity() {
         val locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
         return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
                 locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+    }
+    
+    private fun hasLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun promptEnableLocation() {
