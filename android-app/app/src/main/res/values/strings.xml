@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GPS Hız Ölçer</string>
+    
+    <!-- Bluetooth -->
+    <string name="bluetooth_not_supported">Bluetooth desteklenmiyor</string>
+    <string name="bluetooth_disabled">Bluetooth kapalı</string>
+    <string name="bluetooth_connecting">Bağlanıyor…</string>
+    <string name="bluetooth_connected">Bağlı ✓</string>
+    <string name="bluetooth_disconnected">Bağlı değil</string>
+    <string name="select_device">Cihaz Seç</string>
+    <string name="connect">Bağlan</string>
+    <string name="disconnect">Bağlantıyı Kes</string>
+    <string name="refresh_devices">Cihazları Yenile</string>
+    
+    <!-- GPS -->
+    <string name="gps_active">GPS: Aktif ✓</string>
+    <string name="gps_inactive">GPS: Pasif</string>
+    <string name="speed">HIZ</string>
+    <string name="distance">MESAFE</string>
+    <string name="reset_distance">Mesafeyi Sıfırla</string>
+    
+    <!-- Units -->
+    <string name="km_per_hour">km/h</string>
+    <string name="km">km</string>
+    
+    <!-- Permissions -->
+    <string name="permission_bluetooth">Bluetooth izni gerekli</string>
+    <string name="permission_location">Konum izni gerekli</string>
+    <string name="permissions_granted">İzinler verildi</string>
+    
+    <!-- Errors -->
+    <string name="error_connection_failed">Bağlantı başarısız</string>
+    <string name="error_no_devices">Eşleştirilmiş cihaz yok</string>
+    <string name="error_gps">GPS hatası</string>
+</resources>

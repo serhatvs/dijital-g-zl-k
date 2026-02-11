@@ -1,0 +1,18 @@
+# Android
+android-app/build/
+android-app/.gradle/
+android-app/local.properties
+android-app/.idea/
+android-app/*.iml
+android-app/app/build/
+android-app/.DS_Store
+
+# Arduino
+*.hex
+*.elf
+*.eep
+
+# Genel
+.vscode/
+*.log
+*.tmp

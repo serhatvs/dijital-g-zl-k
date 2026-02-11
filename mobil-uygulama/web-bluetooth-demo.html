@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Hız Ölçer - Web Bluetooth Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+
+        .status {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .status.connected {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+
+        .status.disconnected {
+            background: #ffcdd2;
+            color: #c62828;
+        }
+
+        .data-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .data-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .data-box h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+
+        .data-box .value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .data-box .unit {
+            font-size: 16px;
+            opacity: 0.8;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #2196F3;
+            color: white;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .gps-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .log {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #667eea;
+            padding-left: 10px;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 GPS Hız Ölçer</h1>
+        
+        <div class="warning">
+            ⚠️ <strong>Not:</strong> Web Bluetooth sadece Chrome/Edge Android'de çalışır. HTTPS gerektirir.
+        </div>
+
+        <div id="status" class="status disconnected">
+            Bluetooth: Bağlı Değil
+        </div>
+
+        <div class="data-display">
+            <div class="data-box">
+                <h3>HIZ</h3>
+                <div class="value" id="speed">0.0</div>
+                <div class="unit">km/h</div>
+            </div>
+            <div class="data-box">
+                <h3>MESAFE</h3>
+                <div class="value" id="distance">0.00</div>
+                <div class="unit">km</div>
+            </div>
+        </div>
+
+        <button id="btnConnect" class="btn-secondary" onclick="connectBluetooth()">
+            🔵 HC-05 Bağlan
+        </button>
+
+        <button id="btnDisconnect" class="btn-danger" onclick="disconnectBluetooth()" disabled>
+            ⛔ Bağlantıyı Kes
+        </button>
+
+        <button id="btnGPS" class="btn-primary" onclick="startGPS()">
+            📍 GPS'i Başlat
+        </button>
+
+        <button class="btn-secondary" onclick="resetDistance()">
+            🔄 Mesafeyi Sıfırla
+        </button>
+
+        <div class="gps-info" id="gpsInfo">
+            GPS: Başlatılmadı
+        </div>
+
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        // Global değişkenler
+        let bluetoothDevice = null;
+        let bluetoothCharacteristic = null;
+        let isConnected = false;
+        let watchId = null;
+
+        // GPS değişkenleri
+        let currentSpeed = 0;  // m/s
+        let currentSpeedKmh = 0;  // km/h
+        let totalDistance = 0;  // km
+        let lastLat = 0;
+        let lastLon = 0;
+
+        // Log fonksiyonu
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            const time = new Date().toLocaleTimeString();
+            entry.textContent = `[${time}] ${message}`;
+            logDiv.insertBefore(entry, logDiv.firstChild);
+        }
+
+        // Bluetooth bağlantısı
+        async function connectBluetooth() {
+            try {
+                log('Bluetooth cihazları aranıyor...');
+                
+                // Web Bluetooth API ile cihaz seç
+                bluetoothDevice = await navigator.bluetooth.requestDevice({
+                    filters: [
+                        { name: 'HC-05' },
+                        { name: 'HC-06' },
+                        { namePrefix: 'HC-' }
+                    ],
+                    optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
+                });
+
+                log(`Cihaz bulundu: ${bluetoothDevice.name}`);
+                
+                // GATT sunucusuna bağlan
+                const server = await bluetoothDevice.gatt.connect();
+                log('GATT sunucusuna bağlandı');
+
+                // Servis al
+                const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+                
+                // Characteristic al
+                bluetoothCharacteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+                
+                isConnected = true;
+                updateConnectionStatus(true);
+                log('✓ Bluetooth bağlantısı başarılı');
+
+                // Otomatik veri gönderimi başlat
+                startDataTransmission();
+
+            } catch (error) {
+                log(`❌ Hata: ${error.message}`);
+                alert('Bluetooth bağlantısı başarısız:\n' + error.message);
+            }
+        }
+
+        // Bağlantı durumunu güncelle
+        function updateConnectionStatus(connected) {
+            const statusDiv = document.getElementById('status');
+            const btnConnect = document.getElementById('btnConnect');
+            const btnDisconnect = document.getElementById('btnDisconnect');
+
+            if (connected) {
+                statusDiv.textContent = 'Bluetooth: Bağlı ✓';
+                statusDiv.className = 'status connected';
+                btnConnect.disabled = true;
+                btnDisconnect.disabled = false;
+            } else {
+                statusDiv.textContent = 'Bluetooth: Bağlı Değil';
+                statusDiv.className = 'status disconnected';
+                btnConnect.disabled = false;
+                btnDisconnect.disabled = true;
+            }
+        }
+
+        // Bağlantıyı kes
+        function disconnectBluetooth() {
+            if (bluetoothDevice && bluetoothDevice.gatt.connected) {
+                bluetoothDevice.gatt.disconnect();
+                log('Bluetooth bağlantısı kesildi');
+            }
+            isConnected = false;
+            updateConnectionStatus(false);
+        }
+
+        // GPS başlat
+        function startGPS() {
+            if (!navigator.geolocation) {
+                alert('GPS bu tarayıcıda desteklenmiyor!');
+                return;
+            }
+
+            log('GPS başlatılıyor...');
+
+            watchId = navigator.geolocation.watchPosition(
+                onLocationSuccess,
+                onLocationError,
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+
+            document.getElementById('gpsInfo').textContent = 'GPS: Konum bekleniyor...';
+        }
+
+        // GPS başarılı
+        function onLocationSuccess(position) {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            const speed = position.coords.speed; // m/s (null olabilir)
+
+            // Hız hesaplama
+            if (speed !== null && speed >= 0) {
+                currentSpeed = speed;
+                currentSpeedKmh = (speed * 3.6).toFixed(2);
+            } else {
+                currentSpeedKmh = 0;
+            }
+
+            // Mesafe hesaplama
+            if (lastLat !== 0 && lastLon !== 0) {
+                const distance = calculateDistance(lastLat, lastLon, lat, lon);
+                totalDistance += distance;
+            }
+
+            lastLat = lat;
+            lastLon = lon;
+
+            // Ekranı güncelle
+            document.getElementById('speed').textContent = currentSpeedKmh;
+            document.getElementById('distance').textContent = totalDistance.toFixed(2);
+            document.getElementById('gpsInfo').textContent = 
+                `GPS: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+
+            log(`GPS: Hız ${currentSpeedKmh} km/h, Mesafe ${totalDistance.toFixed(2)} km`);
+        }
+
+        // GPS hata
+        function onLocationError(error) {
+            log(`GPS Hatası: ${error.message}`);
+            document.getElementById('gpsInfo').textContent = `GPS Hata: ${error.message}`;
+        }
+
+        // İki nokta arası mesafe (Haversine)
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Dünya yarıçapı (km)
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c;
+            
+            return distance;
+        }
+
+        function toRad(degrees) {
+            return degrees * (Math.PI / 180);
+        }
+
+        // Veri gönderimi
+        function startDataTransmission() {
+            setInterval(() => {
+                if (isConnected && bluetoothCharacteristic) {
+                    const data = `SPEED:${currentSpeedKmh},DIST:${totalDistance.toFixed(2)}\n`;
+                    sendData(data);
+                }
+            }, 1000);
+        }
+
+        // Bluetooth'a veri gönder
+        async function sendData(data) {
+            try {
+                const encoder = new TextEncoder();
+                const dataArray = encoder.encode(data);
+                await bluetoothCharacteristic.writeValue(dataArray);
+                log(`Gönderildi: ${data.trim()}`);
+            } catch (error) {
+                log(`Gönderim hatası: ${error.message}`);
+            }
+        }
+
+        // Mesafe sıfırla
+        function resetDistance() {
+            totalDistance = 0;
+            lastLat = 0;
+            lastLon = 0;
+            document.getElementById('distance').textContent = '0.00';
+            log('Mesafe sıfırlandı');
+        }
+
+        // Web Bluetooth desteği kontrolü
+        window.addEventListener('load', () => {
+            if (!navigator.bluetooth) {
+                alert('Web Bluetooth bu tarayıcıda desteklenmiyor!\n\nChrome veya Edge Android kullanın.');
+                log('❌ Web Bluetooth desteklenmiyor');
+            } else {
+                log('✓ Web Bluetooth destekleniyor');
+            }
+
+            if (!navigator.geolocation) {
+                alert('GPS bu tarayıcıda desteklenmiyor!');
+                log('❌ Geolocation desteklenmiyor');
+            } else {
+                log('✓ Geolocation destekleniyor');
+            }
+        });
+    </script>
+</body>
+</html>

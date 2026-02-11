@@ -1,0 +1,342 @@
+MIT APP INVENTOR - BLOCKS KODU (PSEUDO-CODE)
+================================================
+
+Bu dosya, MIT App Inventor'da oluşturulacak blocks'ların detaylı pseudo-code halini içerir.
+Her blok, App Inventor'da sürükle-bırak yöntemiyle oluşturulacaktır.
+
+================================================
+1. GLOBAL DEĞİŞKENLER
+================================================
+
+initialize global hizMS to 0
+initialize global hizKMH to 0
+initialize global toplamMesafe to 0
+initialize global eskiLat to 0
+initialize global eskiLon to 0
+initialize global bluetoothAdres to ""
+
+================================================
+2. SCREEN INITIALIZE
+================================================
+
+when Screen1.Initialize
+do
+  set Label_Durum.Text to "Bluetooth: Bağlı Değil"
+  set Label_Durum.TextColor to COLOR_RED
+  set Label_Hiz.Text to "Hız: 0.0 km/h"
+  set Label_Mesafe.Text to "Mesafe: 0.00 km"
+  set Label_GPS.Text to "GPS: Konum bekleniyor..."
+  set Clock1.TimerEnabled to false
+  set Button_BaglantiyiKes.Visible to false
+
+================================================
+3. BLUETOOTH CİHAZ SEÇİMİ
+================================================
+
+when Button_BluetoothSec.Click
+do
+  set ListPicker_Cihazlar.Elements to BluetoothClient1.AddressesAndNames
+  call ListPicker_Cihazlar.Open
+
+---
+
+when ListPicker_Cihazlar.AfterPicking
+do
+  // MAC adresini al (format: "AA:BB:CC:DD:EE:FF DeviceName")
+  set global bluetoothAdres to (
+    select list item
+      list: ListPicker_Cihazlar.Selection
+      index: 1
+  )
+  set Label_Durum.Text to join(
+    "Seçildi: ",
+    ListPicker_Cihazlar.SelectionIndex
+  )
+
+================================================
+4. BLUETOOTH BAĞLANTISI
+================================================
+
+when Button_Baglan.Click
+do
+  if BluetoothClient1.IsConnected
+  then
+    set Label_Durum.Text to "Zaten bağlı!"
+  else
+    if call BluetoothClient1.Connect(address: global bluetoothAdres)
+    then
+      // Başarılı bağlantı
+      set Label_Durum.Text to "Bluetooth: Bağlı ✓"
+      set Label_Durum.TextColor to COLOR_GREEN
+      set Button_Baglan.Visible to false
+      set Button_BaglantiyiKes.Visible to true
+      set Clock1.TimerEnabled to true
+    else
+      // Bağlantı hatası
+      set Label_Durum.Text to "Bağlantı Hatası!"
+      call Notifier1.ShowAlert(
+        message: "HC-05'e bağlanılamadı. Cihazın açık ve eşleştirilmiş olduğundan emin olun."
+      )
+
+---
+
+when Button_BaglantiyiKes.Click
+do
+  call BluetoothClient1.Disconnect
+  set Label_Durum.Text to "Bluetooth: Bağlı Değil"
+  set Label_Durum.TextColor to COLOR_RED
+  set Button_Baglan.Visible to true
+  set Button_BaglantiyiKes.Visible to false
+  set Clock1.TimerEnabled to false
+
+================================================
+5. GPS VERİ ALMA VE İŞLEME
+================================================
+
+when LocationSensor1.LocationChanged(
+  latitude,
+  longitude,
+  altitude,
+  speed
+)
+do
+  // Hız hesaplama (m/s → km/h)
+  set global hizMS to LocationSensor1.CurrentSpeed
+  
+  if (global hizMS ≥ 0)
+  then
+    set global hizKMH to (global hizMS × 3.6)
+    
+    // 2 ondalık basamak
+    set global hizKMH to (
+      round(global hizKMH × 100) / 100
+    )
+    
+    // Mesafe hesaplama
+    if (global eskiLat ≠ 0)
+    then
+      call MesafeHesapla
+    
+    // Eski koordinatları kaydet
+    set global eskiLat to latitude
+    set global eskiLon to longitude
+    
+    // Ekranı güncelle
+    set Label_Hiz.Text to join(
+      "Hız: ",
+      global hizKMH,
+      " km/h"
+    )
+    
+    set Label_Mesafe.Text to join(
+      "Mesafe: ",
+      round(global toplamMesafe × 100) / 100,
+      " km"
+    )
+    
+    set Label_GPS.Text to join(
+      "GPS: ",
+      round(latitude × 1000) / 1000,
+      ", ",
+      round(longitude × 1000) / 1000
+    )
+
+================================================
+6. MESAFE HESAPLAMA PROCEDURE
+================================================
+
+procedure MesafeHesapla
+do
+  // LocationSensor.DistanceTo ile Haversine mesafesi (metre)
+  initialize local mesafeM to (
+    call LocationSensor1.DistanceTo(
+      latitude1: global eskiLat,
+      longitude1: global eskiLon,
+      latitude2: LocationSensor1.Latitude,
+      longitude2: LocationSensor1.Longitude
+    )
+  )
+  
+  // Metre → Kilometre
+  set global toplamMesafe to (
+    global toplamMesafe + (mesafeM / 1000)
+  )
+
+================================================
+7. BLUETOOTH VERİ GÖNDERİMİ
+================================================
+
+when Clock1.Timer
+do
+  if (BluetoothClient1.IsConnected and Switch_OtomatikGonder.Checked)
+  then
+    // Veri formatı: SPEED:45.50,DIST:1.32\n
+    initialize local veriMetni to join(
+      "SPEED:",
+      round(global hizKMH × 100) / 100,
+      ",DIST:",
+      round(global toplamMesafe × 100) / 100,
+      "\n"
+    )
+    
+    // Bluetooth'a gönder
+    call BluetoothClient1.SendText(
+      text: veriMetni
+    )
+
+================================================
+8. GPS DURUM TAKİBİ
+================================================
+
+when LocationSensor1.StatusChanged(
+  provider,
+  status
+)
+do
+  if (status = "Available")
+  then
+    set Label_GPS.Text to "GPS: Hazır ✓"
+    set Label_GPS.TextColor to COLOR_GREEN
+  else if (status = "Out of Service")
+  then
+    set Label_GPS.Text to "GPS: Sinyal Yok ✗"
+    set Label_GPS.TextColor to COLOR_RED
+  else if (status = "Temporarily Unavailable")
+  then
+    set Label_GPS.Text to "GPS: Bekleniyor..."
+    set Label_GPS.TextColor to COLOR_ORANGE
+
+================================================
+9. EK ÖZELLİKLER (OPSİYONEL)
+================================================
+
+// Mesafe Sıfırlama
+when Button_MesafeSifirla.Click
+do
+  set global toplamMesafe to 0
+  set global eskiLat to 0
+  set global eskiLon to 0
+  set Label_Mesafe.Text to "Mesafe: 0.00 km"
+
+---
+
+// Hız Limiti Uyarısı
+when LocationSensor1.LocationChanged
+do
+  // ... (normal kodlar)
+  
+  if (global hizKMH > 50)
+  then
+    call Notifier1.ShowAlert(
+      message: "⚠ DİKKAT: Hız limiti aşıldı!"
+    )
+
+================================================
+10. YARDIMCI FONKSİYONLAR
+================================================
+
+// Virgülden sonra N basamak
+procedure YuvarlaOndalik(sayi, basamak)
+do
+  initialize local carpan to (10 ^ basamak)
+  return (round(sayi × carpan) / carpan)
+
+---
+
+// Bluetooth bağlantı durumu kontrolü
+procedure BluetoothBagliMi
+do
+  return BluetoothClient1.IsConnected
+
+================================================
+11. RENK KODLARI
+================================================
+
+COLOR_RED = -12627531
+COLOR_GREEN = -14503604
+COLOR_BLUE = -16537100
+COLOR_ORANGE = -30464
+COLOR_GRAY = -7829368
+
+Bu kodları Label.TextColor veya Button.BackgroundColor için kullanabilirsiniz.
+
+================================================
+12. BİLEŞEN ÖZELLİKLERİ
+================================================
+
+LocationSensor1:
+  TimeInterval: 1000 ms
+  DistanceInterval: 0 m
+  Enabled: true
+
+Clock1:
+  TimerInterval: 1000 ms
+  TimerEnabled: false (başlangıçta)
+
+BluetoothClient1:
+  (Otomatik ayarlar)
+
+================================================
+13. VERİ AKIŞI ŞEMASİ
+================================================
+
+KULLANICI
+   ↓
+[Bluetooth Cihaz Seç] → ListPicker → MAC Adres Kaydet
+   ↓
+[Bağlan] → BluetoothClient.Connect
+   ↓
+GPS SİNYALİ
+   ↓
+LocationSensor.LocationChanged
+   ↓
+Hız Hesapla (m/s × 3.6)
+   ↓
+Mesafe Hesapla (Haversine)
+   ↓
+Clock1.Timer (her 1 saniye)
+   ↓
+Bluetooth Gönder: "SPEED:X,DIST:Y\n"
+   ↓
+ARDUINO HC-05
+   ↓
+LCD EKRAN
+
+================================================
+14. HATA AYIKLAMA İPUÇLARI
+================================================
+
+1. Blocks'da kırmızı ünlem işareti varsa hata var demektir
+2. Test ederken Serial Monitor kullanın
+3. Label_Durum ile bağlantı durumunu takip edin
+4. GPS test için Mock Locations kullanın
+5. Bluetooth bağlantısı kesilirse otomatik yeniden bağlanma ekleyin:
+
+when Clock2.Timer
+do
+  if (not BluetoothClient1.IsConnected)
+  then
+    if (global bluetoothAdres ≠ "")
+    then
+      call BluetoothClient1.Connect(address: global bluetoothAdres)
+
+================================================
+15. PERFORMANS OPTİMİZASYONU
+================================================
+
+- Clock1.TimerInterval'i 500 ms'ye düşürülebilir (daha hızlı veri)
+- LocationSensor.TimeInterval'i 2000 ms'ye çıkarabilirsiniz (batarya tasarrufu)
+- String join yerine make text kullanın (daha hızlı)
+- Gereksiz round işlemlerini azaltın
+
+================================================
+
+Not: Bu pseudo-code'u MIT App Inventor'da block'lara dönüştürürken:
+1. Her satır bir block'a karşılık gelir
+2. "join" → Text blocks
+3. "round", "×", "/" → Math blocks
+4. "if-then-else" → Control blocks
+5. "call" → Component method blocks
+6. "set" → Variable blocks
+
+Başarılar! 🚀
