@@ -29,11 +29,17 @@ class GPSManager(private val context: Context) {
 
     private var lastLocation: Location? = null
     private var totalDistance: Double = 0.0 // kilometre
+    
+    // MOVING AVERAGE BUFFER - GPS smoothing için
+    private val speedBuffer = mutableListOf<Float>()
+    private val distanceBuffer = mutableListOf<Double>()
+    private var bufferCounter = 0
 
     companion object {
         private const val TAG = "GPSManager"
-        private const val UPDATE_INTERVAL = 1000L // 1 saniye
-        private const val FASTEST_INTERVAL = 500L // Minimum 0.5 saniye
+        private const val UPDATE_INTERVAL = 100L // 100ms - saniyede 10 veri
+        private const val FASTEST_INTERVAL = 100L // Minimum 100ms
+        private const val BUFFER_SIZE = 10 // 10 örnek toplama (1 saniye)
         private const val EARTH_RADIUS_KM = 6371.0
         private const val MIN_DISTANCE_KM = 0.001 // 1 metre (küçük mesafe eşiği)
         private const val MAX_JUMP_DISTANCE_KM = 0.03 // 30 metre (teleportasyon filtresi)
@@ -73,11 +79,34 @@ class GPSManager(private val context: Context) {
                     // GPS doğruluğu kontrolü
                     if (location.accuracy > 50f) {
                         android.util.Log.w(TAG, "Low GPS accuracy: ${location.accuracy}m - waiting for better signal")
-                        // Düşük doğrulukta da gönder ama uyar
                     }
                     
                     val locationData = processLocation(location)
-                    trySend(locationData)
+                    
+                    // Buffer'a ekle
+                    speedBuffer.add(locationData.speedKMH)
+                    distanceBuffer.add(locationData.totalDistanceKM)
+                    bufferCounter++
+                    
+                    // 10 örnek toplandığında ortalama al ve gönder
+                    if (bufferCounter >= BUFFER_SIZE) {
+                        val avgSpeed = speedBuffer.average().toFloat()
+                        val avgDistance = distanceBuffer.average()
+                        
+                        val smoothedData = locationData.copy(
+                            speedKMH = avgSpeed,
+                            totalDistanceKM = avgDistance
+                        )
+                        
+                        android.util.Log.d(TAG, "Smoothed: Speed ${avgSpeed} km/h (${speedBuffer.size} samples), Dist ${avgDistance} km")
+                        
+                        trySend(smoothedData)
+                        
+                        // Buffer'ı temizle
+                        speedBuffer.clear()
+                        distanceBuffer.clear()
+                        bufferCounter = 0
+                    }
                 }
             }
         }
