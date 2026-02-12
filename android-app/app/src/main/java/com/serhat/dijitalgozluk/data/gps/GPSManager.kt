@@ -11,6 +11,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import com.serhat.dijitalgozluk.data.weather.WeatherManager
 import java.util.Locale
 import kotlin.math.*
 
@@ -26,6 +27,8 @@ class GPSManager(private val context: Context) {
 
     private val fusedLocationClient: FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(context)
+    
+    private val weatherManager = WeatherManager(context)
 
     private var lastLocation: Location? = null
     private var totalDistance: Double = 0.0 // kilometre
@@ -130,7 +133,7 @@ class GPSManager(private val context: Context) {
     /**
      * Location nesnesini LocationData'ya dönüştürür ve mesafe hesaplar
      */
-    private fun processLocation(location: Location): LocationData {
+    private suspend fun processLocation(location: Location): LocationData {
         var speedKMH = 0f
         
         // Mesafe ve hız hesaplama
@@ -194,7 +197,9 @@ class GPSManager(private val context: Context) {
             speedKMH = speedKMH,
             totalDistanceKM = totalDistance,
             accuracy = location.accuracy,
-            timestamp = location.time
+            timestamp = location.time,
+            temperature = tempData.temp,
+            temperatureSource = tempData.source.name
         )
     }
 
@@ -256,7 +261,9 @@ data class LocationData(
     val speedKMH: Float,       // Hız (km/h)
     val totalDistanceKM: Double, // Toplam mesafe (km)
     val accuracy: Float,       // Konum hassasiyeti (metre)
-    val timestamp: Long        // Unix timestamp (ms)
+    val timestamp: Long,       // Unix timestamp (ms)
+    val temperature: Float? = null,     // Sıcaklık (°C, null = bilinmiyor)
+    val temperatureSource: String = "NONE"  // Kaynak: PHONE_SENSOR, WEATHER_API, CACHED, NONE
 ) {
     /**
      * Format edilmiş hız string
@@ -272,22 +279,30 @@ data class LocationData(
 
     /**
      * Arduino'ya gönderilecek veri formatı
-     * Format: SPEED:45.50,DIST:1.320,LAT:41.008240,LON:28.978359\n
+     * Format: SPEED:45.50,DIST:1.320,LAT:41.008240,LON:28.978359,TEMP:-8.5\n
      * Distance: 3 ondalık (1 metre hassasiyet)
      * LAT/LON: 6 ondalık (0.11 metre hassasiyet)
+     * TEMP: Opsiyonel (1 ondalık)
      * 
      * ÖNEMLİ: Locale.US kullanılarak her zaman nokta (.) ondalık ayırıcısı kullanılır.
      * Türkiye gibi vergül (,) kullanan ülkelerde bile Arduino nokta bekliyor!
      */
     fun toBluetoothData(): String {
-        return String.format(
+        val baseData = String.format(
             Locale.US,
-            "SPEED:%s,DIST:%s,LAT:%.6f,LON:%.6f\n",
+            "SPEED:%s,DIST:%s,LAT:%.6f,LON:%.6f",
             getFormattedSpeed(),
             getFormattedDistance(),
             latitude,
             longitude
         )
+        
+        // Sıcaklık varsa ekle (opsiyonel)
+        val tempData = temperature?.let { temp ->
+            String.format(Locale.US, ",TEMP:%.1f", temp)
+        } ?: ""
+        
+        return "$baseData$tempData\n"
     }
 }
 

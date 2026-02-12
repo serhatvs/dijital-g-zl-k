@@ -23,6 +23,7 @@ float hiz = 0.0;
 float mesafe = 0.0;
 float enlem = 0.0;   // Latitude
 float boylam = 0.0;  // Longitude
+float sicaklik = 0.0; // Temperature (°C) - opsiyonel
 bool bluetoothBagli = false;
 unsigned long sonVeriMillis = 0;
 bool testModu = false;  // Test modu aktif mi?
@@ -126,8 +127,8 @@ void bluetoothOku() {
 
 /**
  * Gelen veriyi ayrıştırır
- * Format: SPEED:45.50,DIST:1.320,LAT:41.0082,LON:28.9784
- * NOT: LAT ve LON opsiyonel (gelmeyebilir)
+ * Format: SPEED:45.50,DIST:1.320,LAT:41.0082,LON:28.9784,TEMP:-8.5
+ * NOT: LAT, LON ve TEMP opsiyonel (gelmeyebilir)
  */
 void veriAyristir(String veri) {
   veri.trim();
@@ -138,11 +139,12 @@ void veriAyristir(String veri) {
     return;
   }
 
-  // "SPEED:", ",DIST:", ",LAT:", ",LON:" etiketlerini bul
+  // "SPEED:", ",DIST:", ",LAT:", ",LON:", ",TEMP:" etiketlerini bul
   int speedIndex = veri.indexOf("SPEED:");
   int distIndex = veri.indexOf(",DIST:");
   int latIndex = veri.indexOf(",LAT:");
   int lonIndex = veri.indexOf(",LON:");
+  int tempIndex = veri.indexOf(",TEMP:");
   
   // SPEED ve DIST ZORUNLU
   if (speedIndex == -1 || distIndex == -1) {
@@ -181,8 +183,28 @@ void veriAyristir(String veri) {
     String enlemStr = veri.substring(latIndex + 5, lonIndex);
     enlem = enlemStr.toFloat();
     
-    String boylamStr = veri.substring(lonIndex + 5);
+    // Boylam: LON'dan sonra TEMP varsa ona kadar, yoksa sona kadar
+    String boylamStr;
+    if (tempIndex != -1) {
+      boylamStr = veri.substring(lonIndex + 5, tempIndex);
+    } else {
+      boylamStr = veri.substring(lonIndex + 5);
+      boylamStr.trim();
+      if (boylamStr.endsWith(",")) {
+        boylamStr = boylamStr.substring(0, boylamStr.length() - 1);
+      }
+    }
     boylam = boylamStr.toFloat();
+  }
+  
+  // Sıcaklık al (varsa)
+  if (tempIndex != -1) {
+    String sicaklikStr = veri.substring(tempIndex + 6);
+    sicaklikStr.trim();
+    if (sicaklikStr.endsWith(",")) {
+      sicaklikStr = sicaklikStr.substring(0, sicaklikStr.length() - 1);
+    }
+    sicaklik = sicaklikStr.toFloat();
   }
   
   // Debug: Ayrıştırılan değerleri göster
@@ -196,6 +218,11 @@ void veriAyristir(String veri) {
     Serial.print(enlem, 6);
     Serial.print(", ");
     Serial.print(boylam, 6);
+  }
+  if (tempIndex != -1) {
+    Serial.print(" | Sicaklik: ");
+    Serial.print(sicaklik, 1);
+    Serial.print(" C");
   }
   Serial.println();
 }
