@@ -75,7 +75,7 @@ do
       // Bağlantı hatası
       set Label_Durum.Text to "Bağlantı Hatası!"
       call Notifier1.ShowAlert(
-        message: "HC-05'e bağlanılamadı. Cihazın açık ve eşleştirilmiş olduğundan emin olun."
+        message: "HC-06'ye bağlanılamadı. Cihazın açık ve eşleştirilmiş olduğundan emin olun."
       )
 
 ---
@@ -298,7 +298,7 @@ Clock1.Timer (her 1 saniye)
    ↓
 Bluetooth Gönder: "SPEED:X,DIST:Y\n"
    ↓
-ARDUINO HC-05
+ARDUINO HC-06
    ↓
 LCD EKRAN
 

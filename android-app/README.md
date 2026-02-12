@@ -11,7 +11,7 @@
 
 ## Özellikler
 
-✅ Bluetooth Classic (HC-05/HC-06) bağlantısı  
+✅ Bluetooth Classic (HC-06) bağlantısı  
 ✅ GPS konum ve hız takibi  
 ✅ m/s → km/h dönüşümü  
 ✅ Haversine mesafe hesaplama  
@@ -152,7 +152,7 @@ cd /home/serhat/vscode-workspace/dijital-gozluk/android-app
 3. Run 'app' (Shift+F10)
 
 ### Bluetooth Test
-1. HC-05'i Arduino'ya bağla
+1. HC-06'yı Arduino'ya bağla
 2. Telefonda Bluetooth aç ve eşleştir
 3. Uygulamada cihazı seç ve bağlan
 

@@ -1,6 +1,6 @@
 /*
  * GPS HIZ VE MESAFE ÖLÇÜM SİSTEMİ
- * Bluetooth (HC-05) + LCD (16x2 I2C)
+ * Bluetooth (HC-06) + LCD (16x2 I2C)
  * 
  * Proje: Telefon GPS verisini Bluetooth ile alıp LCD'de gösterme
  * Tarih: Şubat 2026
@@ -10,8 +10,8 @@
 #include <LiquidCrystal_I2C.h>
 
 // ==================== PIN TANIMLARI ====================
-#define BT_RX 10  // Arduino'nun RX pini → HC-05 TX'e
-#define BT_TX 11  // Arduino'nun TX pini → HC-05 RX'e
+#define BT_RX 10  // Arduino'nun RX pini → HC-06 TX'e
+#define BT_TX 11  // Arduino'nun TX pini → HC-06 RX'e
 
 // ==================== NESNE TANIMLARI ====================
 SoftwareSerial bluetooth(BT_RX, BT_TX);
@@ -35,7 +35,7 @@ void setup() {
   Serial.println("Bluetooth baglantisi bekleniyor...");
   
   // Bluetooth başlat
-  bluetooth.begin(9600); // HC-05 default baud rate
+  bluetooth.begin(9600); // HC-06 default baud rate
   
   // LCD başlat
   lcd.init();

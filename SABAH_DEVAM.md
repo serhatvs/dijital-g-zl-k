@@ -71,8 +71,8 @@ android-app/app/build/intermediates/apk/debug/app-debug.apk
 2. **Telefonda:**
    - Uygulama aç
    - Bluetooth + GPS izinlerini ver
-   - HC-05'i eşleştir (şifre: 1234 veya 0000)
-   - "Cihaz Seç" → HC-05
+   - HC-06'yı eşleştir (şifre: 1234 veya 0000)
+   - "Cihaz Seç" → HC-06
    - "Bağlan"
 
 3. **Test:**
@@ -115,7 +115,7 @@ dijital-gozluk/android-app/
 - Route simülasyonu teleportasyon yapabilir (filtre eklendi)
 
 ### Arduino
-- Bluetooth HC-05 baud rate: 9600
+- Bluetooth HC-06 baud rate: 9600
 - LCD I2C address: 0x27 (veya 0x3F)
 - RAM kullanımı: %66 (kritik üstü ama güvenli)
 
@@ -139,7 +139,7 @@ Arduino D11 → 1kΩ → HC-05 RX
 ```
 
 **Eşleştirme:**
-- Bluetooth ayarlarından HC-05'i bul
+- Bluetooth ayarlarından HC-06'ı bul
 - Şifre: `1234` veya `0000`
 
 ---

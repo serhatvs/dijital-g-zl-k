@@ -163,18 +163,18 @@ Etiketli format (`SPEED:`, `DIST:`) daha okunabilir ve hata ayıklama açısınd
 ### 3.1 Gerekli Donanım
 
 - Arduino Uno/Nano
-- HC-05 veya HC-06 Bluetooth Modülü
+- HC-06 Bluetooth Modülü
 - 16x2 LCD Ekran (I2C veya paralel)
 - Bağlantı kabloları
 
 ### 3.2 Bluetooth Bağlantısı
 
-**HC-05/HC-06 Pinleri:**
+**HC-06 Pinleri:**
 ```
-HC-05 VCC  → Arduino 5V
-HC-05 GND  → Arduino GND
-HC-05 TXD  → Arduino RX (Pin 0) veya SoftwareSerial (Pin 10)
-HC-05 RXD  → Arduino TX (Pin 1) veya SoftwareSerial (Pin 11)
+HC-06 VCC  → Arduino 5V
+HC-06 GND  → Arduino GND
+HC-06 TXD  → Arduino RX (Pin 0) veya SoftwareSerial (Pin 10)
+HC-06 RXD  → Arduino TX (Pin 1) veya SoftwareSerial (Pin 11)
 ```
 
 **Not:** RXD için 3.3V'a voltage divider gerekebilir.
@@ -207,7 +207,7 @@ float mesafe = 0.0;
 
 void setup() {
   Serial.begin(9600);      // Debug için
-  bluetooth.begin(9600);   // HC-05 default baud rate
+  bluetooth.begin(9600);   // HC-06 default baud rate
   
   lcd.init();
   lcd.backlight();
@@ -315,7 +315,7 @@ Sistem üç ana bileşenden oluşmaktadır:
 
 **2. İletişim Katmanı**
 - Protokol: Bluetooth Serial Port Profile (SPP)
-- Modül: HC-05/HC-06 (UART @ 9600 baud)
+- Modül: HC-06 (UART @ 9600 baud)
 - Veri Formatı: ASCII metin ("SPEED:X,DIST:Y\n")
 - Güncelleme Frekansı: 1 Hz
 
@@ -355,7 +355,7 @@ Ayrıştırılan değerler, LiquidCrystal_I2C kütüphanesi kullanılarak 16x2 L
 | GPS sinyalinin kapalı alanlarda kesilmesi | Açık alanda test, mock veri kullanımı |
 | Bluetooth bağlantı kopmaları | Bağlantı durumu kontrolü, otomatik yeniden bağlanma |
 | LCD üzerinde karakter artıkları | Ekstra boşluk karakterleri ile eski veriyi silme |
-| HC-05 RXD 5V toleransı | Voltage divider (1kΩ + 2kΩ direnç) |
+| HC-06 RXD 5V toleransı | Voltage divider (1kΩ + 2kΩ direnç) |
 
 ### 4.5 Test ve Doğrulama
 
@@ -453,7 +453,7 @@ void veriAyristir2(String veri) {
 **C:** Tüketici GPS'leri ~5-10m hassasiyete sahiptir. Hız ölçümü daha doğrudur (±0.5 km/h).
 
 **S2: Bluetooth menzili yeterli mi?**
-**C:** HC-05 ~10m menzile sahiptir. Araç içi kullanım için yeterlidir.
+**C:** HC-06 ~10m menzile sahiptir. Araç içi kullanım için yeterlidir.
 
 **S3: MIT App Inventor yerine native Android kullanılmalı mı?**
 **C:** Prototip için MIT yeterlidir. Production için Java/Kotlin önerilir.

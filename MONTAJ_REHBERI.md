@@ -7,14 +7,14 @@
 
 ### Elektronik Bileşenler
 - [ ] Arduino Uno veya Nano (1 adet) - **Klon/Clone versiyonlar da kullanılabilir**
-- [ ] HC-05 veya HC-06 Bluetooth Modülü (1 adet)
+- [ ] HC-06 Bluetooth Modülü (1 adet)
 - [ ] 16x2 LCD Ekran (I2C modüllü) (1 adet)
 - [ ] Jumper Kablolar (Erkek-Erkek, Erkek-Dişi)
 - [ ] Breadboard (1 adet)
 - [ ] USB Kablosu (Arduino için)
 - [ ] 9V Pil + Pil Adaptörü (opsiyonel, mobil kullanım için)
 
-### Voltage Divider için (HC-05 RXD koruması)
+### Voltage Divider için (HC-06 RXD koruması)
 - [ ] 1kΩ Direnç (1 adet)
 - [ ] 2kΩ Direnç (1 adet)
 
@@ -27,12 +27,12 @@
 
 ## 2. ARDUINO - BLUETOOTH BAĞLANTISI
 
-### HC-05/HC-06 Pinout
+### HC-06 Pinout
 
 ```
-HC-05 Modülü:
+HC-06 Modülü:
 ┌─────────────┐
-│    HC-05    │
+│    HC-06    │
 ├─────────────┤
 │ VCC  → 5V   │  Kırmızı kablo
 │ GND  → GND  │  Siyah kablo
@@ -45,9 +45,9 @@ HC-05 Modülü:
 
 ### Bağlantı Şeması
 
-#### DOĞRUDAN BAĞLANTI (Risk: HC-05 RXD zarar görebilir)
+#### DOĞRUDAN BAĞLANTI (Risk: HC-06 RXD zarar görebilir)
 ```
-Arduino          HC-05
+Arduino          HC-06
  5V     ────────  VCC
  GND    ────────  GND
  Pin 10 ────────  TXD
@@ -56,7 +56,7 @@ Arduino          HC-05
 
 #### GÜVENLİ BAĞLANTI (Voltage Divider ile)
 ```
-Arduino Pin 11 ───┬─── 1kΩ ───┬─── HC-05 RXD
+Arduino Pin 11 ───┬─── 1kΩ ───┬─── HC-06 RXD
                   │            │
                  GND        2kΩ
                             │
@@ -65,7 +65,7 @@ Arduino Pin 11 ───┬─── 1kΩ ───┬─── HC-05 RXD
 
 **Açıklama:**
 - Arduino TX (Pin 11) → 5V çıkış verir
-- HC-05 RXD → 3.3V toleranslıdır
+- HC-06 RXD → 3.3V toleranslıdır
 - Voltage divider: $V_{out} = V_{in} \times \frac{R_2}{R_1 + R_2} = 5V \times \frac{2k\Omega}{3k\Omega} = 3.3V$
 
 ---
@@ -119,7 +119,7 @@ Arduino          LCD I2C
     │    │   │    │ │    10 11           │
     │    │   │    │ │     │  │           │
     │    │   │    │ │     │  │           │
-    │  [LCD I2C]  │ │   [HC-05]          │
+    │  [LCD I2C]  │ │   [HC-06]          │
     │   VCC GND SDA SCL  VCC GND TX RX   │
     │    │   │    │ │     │  │   │  │    │
     │    └───┴────┴─┴─────┴──┴───┴──┘    │
@@ -135,7 +135,7 @@ Arduino          LCD I2C
    - GND → GND ray
    - SDA → Arduino A4
    - SCL → Arduino A5
-3. **HC-05'i breadboard'a takın**
+3. **HC-06'yı breadboard'a takın**
    - VCC → 5V ray
    - GND → GND ray
    - TXD → Arduino Pin 10 (SoftwareSerial RX)
@@ -242,7 +242,7 @@ LiquidCrystal_I2C lcd(0x27, 16, 2); // veya 0x3F
 6. PIN kodu: **1234** veya **0000** (default)
 7. Eşleşti ✓
 
-### HC-05 LED Göstergeleri
+### HC-06 LED Göstergeleri
 
 | LED Durumu | Anlamı |
 |-----------|--------|
@@ -301,12 +301,12 @@ LiquidCrystal_I2C lcd(0x27, 16, 2); // veya 0x3F
 1. **Donanım Kontrolü:**
    - ✓ Arduino'ya güç ver (USB veya pil)
    - ✓ LCD'de başlangıç mesajı görünmeli
-   - ✓ HC-05 LED'i yanıp sönmeli
+   - ✓ HC-06 LED'i yanıp sönmeli
 
 2. **Bluetooth Bağlantısı:**
    - ✓ Telefonda uygulamayı aç
-   - ✓ "HC-05" cihazını seç ve bağlan
-   - ✓ HC-05 LED'i düzenli yanıp sönmeye başlamalı
+   - ✓ "HC-06" cihazını seç ve bağlan
+   - ✓ HC-06 LED'i düzenli yanıp sönmeye başlamalı
    - ✓ LCD'de "Baglanti Kesildi!" mesajı gitmeli
 
 3. **GPS Testi:**
@@ -366,16 +366,16 @@ LiquidCrystal_I2C lcd(0x3F, 16, 2); // 0x27 yerine 0x3F dene
 ### Bluetooth Bağlanmıyor
 
 **Olası Nedenler:**
-- HC-05 eşleştirilmemiş → Telefonda manuel eşleştir
+- HC-06 eşleştirilmemiş → Telefonda manuel eşleştir
 - Ters bağlantı → TXD-RX, RXD-TX kontrolü
 - Güç yetersiz → 5V ve GND kontrolü
 
 **Çözüm:**
-- HC-05'i reset et (güç kes-aç)
+- HC-06'yı reset et (güç kes-aç)
 - AT komutları ile test et (baud rate: 38400):
   ```
   AT → OK
-  AT+NAME? → +NAME:HC-05
+  AT+NAME? → +NAME:HC-06
   AT+PSWD? → +PSWD:1234
   ```
 
@@ -398,7 +398,7 @@ LiquidCrystal_I2C lcd(0x3F, 16, 2); // 0x27 yerine 0x3F dene
 
 **Çözüm:**
 ```cpp
-bluetooth.begin(9600); // HC-05 default
+bluetooth.begin(9600); // HC-06 default
 // Değiştir:
 bluetooth.begin(38400);
 ```
@@ -418,7 +418,7 @@ bluetooth.begin(38400);
 ## 10. GÜVENLİK UYARILARI
 
 ⚠️ **Kısa Devre:** VCC ve GND'yi doğrudan bağlamayın
-⚠️ **Voltage:** HC-05 RXD 5V'a hassastır, voltage divider kullanın
+⚠️ **Voltage:** HC-06 RXD 5V'a hassastır, voltage divider kullanın
 ⚠️ **Sürüş Güvenliği:** Uygulamayı sürüş sırasında kullanmayın
 ⚠️ **Güç:** 9V pil kullanırken Arduino Vin pinine bağlayın (5V pinine değil)
 
@@ -428,7 +428,7 @@ bluetooth.begin(38400);
 
 ### Breadboard Görünümü
 ```
-[Arduino] ──── [Breadboard] ──── [HC-05]
+[Arduino] ──── [Breadboard] ──── [HC-06]
     │                │
     │                │
     └───── [LCD I2C] ┘

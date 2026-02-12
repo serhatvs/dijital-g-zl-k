@@ -32,7 +32,7 @@ Bu klasör, GPS verilerini Bluetooth üzerinden Arduino'ya gönderen mobil uygul
 ### Web Demo ile Test:
 1. `web-bluetooth-demo.html` dosyasını Chrome/Edge'de aç
 2. Bluetooth izni ver
-3. HC-05 cihazını seç
+3. HC-06 cihazını seç
 4. GPS'i etkinleştir
 
 ## Dosya Yapısı

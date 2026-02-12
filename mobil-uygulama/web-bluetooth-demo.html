@@ -187,7 +187,7 @@
         </div>
 
         <button id="btnConnect" class="btn-secondary" onclick="connectBluetooth()">
-            🔵 HC-05 Bağlan
+            🔵 HC-06 Bağlan
         </button>
 
         <button id="btnDisconnect" class="btn-danger" onclick="disconnectBluetooth()" disabled>
@@ -241,7 +241,7 @@
                 // Web Bluetooth API ile cihaz seç
                 bluetoothDevice = await navigator.bluetooth.requestDevice({
                     filters: [
-                        { name: 'HC-05' },
+                        { name: 'HC-06' },
                         { name: 'HC-06' },
                         { namePrefix: 'HC-' }
                     ],

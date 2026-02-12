@@ -1,6 +1,6 @@
 /*
  * GPS HIZ VE MESAFE ÖLÇÜM SİSTEMİ
- * Bluetooth (HC-05) + LCD (16x2 I2C)
+ * Bluetooth (HC-06) + LCD (16x2 I2C)
  * 
  * Proje: Telefon GPS verisini Bluetooth ile alıp LCD'de gösterme
  * Tarih: Şubat 2026
@@ -10,8 +10,8 @@
 #include <LiquidCrystal_I2C.h>
 
 // ==================== PIN TANIMLARI ====================
-#define BT_RX 10  // Arduino'nun RX pini → HC-05 TX'e
-#define BT_TX 11  // Arduino'nun TX pini → HC-05 RX'e
+#define BT_RX 10  // Arduino'nun RX pini → HC-06 TX'e
+#define BT_TX 11  // Arduino'nun TX pini → HC-06 RX'e
 
 // ==================== NESNE TANIMLARI ====================
 SoftwareSerial bluetooth(BT_RX, BT_TX);
@@ -37,7 +37,7 @@ void setup() {
   Serial.println("Test icin 'TEST' yazin");
   
   // Bluetooth başlat
-  bluetooth.begin(9600); // HC-05 default baud rate
+  bluetooth.begin(9600); // HC-06 default baud rate
   
   // LCD başlat
   lcd.init();
@@ -99,13 +99,19 @@ void bluetoothOku() {
         if (gelenVeri.equalsIgnoreCase("TEST")) {
           testSenaryosuBaslat();
         } else {
-          // Veriyi ayrıştır
+          // Veriyi ayrıştır (Android Locale.US kullandığı için her zaman nokta gelir)
           veriAyristir(gelenVeri);
           
           // Son veri zamanını güncelle
           sonVeriMillis = millis();
           bluetoothBagli = true;
           testModu = false;
+          
+          // Yeniden bağlandıysa ekranı temizle
+          if (sonDurum == "DISCONNECTED") {
+            lcd.clear();
+            sonDurum = "RECONNECT";
+          }
         }
         
         // Buffer'ı temizle
@@ -120,10 +126,17 @@ void bluetoothOku() {
 
 /**
  * Gelen veriyi ayrıştırır
- * Format: SPEED:45.50,DIST:1.32,LAT:41.0082,LON:28.9784
+ * Format: SPEED:45.50,DIST:1.320,LAT:41.0082,LON:28.9784
+ * NOT: LAT ve LON opsiyonel (gelmeyebilir)
  */
 void veriAyristir(String veri) {
   veri.trim();
+  
+  // Çok kısa veri kontrolü (minimum: "SPEED:0,DIST:0" = 16 karakter)
+  if (veri.length() < 16) {
+    Serial.println("HATA: Veri çok kısa!");
+    return;
+  }
 
   // "SPEED:", ",DIST:", ",LAT:", ",LON:" etiketlerini bul
   int speedIndex = veri.indexOf("SPEED:");
@@ -131,86 +144,76 @@ void veriAyristir(String veri) {
   int latIndex = veri.indexOf(",LAT:");
   int lonIndex = veri.indexOf(",LON:");
   
-  if (speedIndex != -1 && distIndex != -1) {
-    // Hız değerini al
-    String hizStr = veri.substring(speedIndex + 6, distIndex);
-    hiz = hizStr.toFloat();
-    
-    // Mesafe değerini al (LAT varsa ona kadar, yoksa sona kadar)
-    String mesafeStr;
-    if (latIndex != -1) {
-      mesafeStr = veri.substring(distIndex + 6, latIndex);
-    } else {
-      mesafeStr = veri.substring(distIndex + 6);
+  // SPEED ve DIST ZORUNLU
+  if (speedIndex == -1 || distIndex == -1) {
+    Serial.println("HATA: SPEED veya DIST etiketi bulunamadi!");
+    Serial.print("Gelen veri: ");
+    Serial.println(veri);
+    return;
+  }
+  
+  // SPEED >= -1 ve DIST > SPEED olmalı
+  if (speedIndex >= distIndex) {
+    Serial.println("HATA: Veri sırası yanlış!");
+    return;
+  }
+  // Hız değerini al
+  String hizStr = veri.substring(speedIndex + 6, distIndex);
+  hiz = hizStr.toFloat();
+  
+  // Mesafe değerini al (LAT varsa ona kadar, yoksa sona kadar)
+  String mesafeStr;
+  if (latIndex != -1) {
+    mesafeStr = veri.substring(distIndex + 6, latIndex);
+  } else {
+    // LAT yok, virgül varsa temizle
+    mesafeStr = veri.substring(distIndex + 6);
+    mesafeStr.trim();
+    // Son karakter virgül ise kaldır
+    if (mesafeStr.endsWith(",")) {
+      mesafeStr = mesafeStr.substring(0, mesafeStr.length() - 1);
     }
-    mesafe = mesafeStr.toFloat();
+  }
+  mesafe = mesafeStr.toFloat();
+  
+  // Koordinatları al (varsa)
+  if (latIndex != -1 && lonIndex != -1) {
+    String enlemStr = veri.substring(latIndex + 5, lonIndex);
+    enlem = enlemStr.toFloat();
     
-    // Koordinatları al (varsa)
-    if (latIndex != -1 && lonIndex != -1) {
-      String enlemStr = veri.substring(latIndex + 5, lonIndex);
-      enlem = enlemStr.toFloat();
-      
-      String boylamStr = veri.substring(lonIndex + 5);
-      boylam = boylamStr.toFloat();
-    }
-    
-    // Debug: Ayrıştırılan değerleri göster
-    Serial.print("Ayristirildi -> Hiz: ");
-    Serial.print(hiz, 1);
-    Serial.print(" km/h | Mesafe: ");
-    Serial.print(mesafe, 2);
-    Serial.print(" km");
-    if (latIndex != -1) {
-      Serial.print(" | GPS: ");
-      Serial.print(enlem, 6);
-      Serial.print(", ");
-      Serial.print(boylam, 6);
-    }
-    Serial.println();
-    return;
+    String boylamStr = veri.substring(lonIndex + 5);
+    boylam = boylamStr.toFloat();
   }
-
-  // Alternatif formatlar: SPEED=..,DIST=.. veya S=..,D=..
-  speedIndex = veri.indexOf("SPEED=");
-  distIndex = veri.indexOf(",DIST=");
-  if (speedIndex != -1 && distIndex != -1) {
-    hiz = veri.substring(speedIndex + 6, distIndex).toFloat();
-    mesafe = veri.substring(distIndex + 6).toFloat();
-    Serial.println("Format: SPEED=X,DIST=Y");
-    return;
+  
+  // Debug: Ayrıştırılan değerleri göster
+  Serial.print("Ayristirildi -> Hiz: ");
+  Serial.print(hiz, 1);
+  Serial.print(" km/h | Mesafe: ");
+  Serial.print(mesafe, 3); // 3 ondalık (1 metre hassasiyet)
+  Serial.print(" km");
+  if (latIndex != -1 && lonIndex != -1) {
+    Serial.print(" | GPS: ");
+    Serial.print(enlem, 6);
+    Serial.print(", ");
+    Serial.print(boylam, 6);
   }
-
-  speedIndex = veri.indexOf("S=");
-  distIndex = veri.indexOf(",D=");
-  if (speedIndex != -1 && distIndex != -1) {
-    hiz = veri.substring(speedIndex + 2, distIndex).toFloat();
-    mesafe = veri.substring(distIndex + 3).toFloat();
-    Serial.println("Format: S=X,D=Y");
-    return;
-  }
-
-  // Basit format: 45.5;1.32
-  if (veri.indexOf(';') != -1) {
-    int noktaliVirguIndex = veri.indexOf(';');
-    hiz = veri.substring(0, noktaliVirguIndex).toFloat();
-    mesafe = veri.substring(noktaliVirguIndex + 1).toFloat();
-    Serial.println("Format: X;Y");
-    return;
-  }
-
-  Serial.println("HATA: Veri formati hatali!");
-  Serial.println("Ornek: SPEED:45.50,DIST:1.32");
+  Serial.println();
 }
 
 /**
  * LCD ekranı günceller
  */
 void lcdGuncelle() {
+  // Bağlantı kesilmişse LCD'yi güncelleme
+  if (sonDurum == "DISCONNECTED") {
+    return;
+  }
+  
   // Hiç veri gelmediyse bekleme ekranı göster
   bool veriGelmis = (hiz != 0.0 || mesafe != 0.0 || enlem != 0.0 || boylam != 0.0);
   
   if (veriGelmis) {
-    // Veri varsa göster (bağlantı kesilse bile)
+    // Veri varsa göster
     String yeniDurum = "DATA";
     if (yeniDurum != sonDurum) {
       lcd.clear();
@@ -233,9 +236,19 @@ void lcdGuncelle() {
     
     // İkinci satır: Mesafe
     lcd.setCursor(0, 1);
-    lcd.print("Mesafe: ");
-    lcd.print(mesafe, 2);
-    lcd.print(" km ");
+    
+    // Mesafe 1 km'den küçükse metre cinsinden göster (daha hassas)
+    if (mesafe < 1.0) {
+      int metrelik = (int)(mesafe * 1000);
+      lcd.print("Mesafe: ");
+      lcd.print(metrelik);
+      lcd.print(" m    "); // Boşluklar ile temizlik
+    } else {
+      // 1 km ve üstü: km cinsinden 2 ondalık
+      lcd.print("Mesafe:");
+      lcd.print(mesafe, 2);
+      lcd.print("km ");
+    }
   } else if (sonDurum != "WAIT") {
     // Bağlantı bekleniyor ekranı (sadece hiç veri gelmediyse)
     lcd.clear();
@@ -257,7 +270,22 @@ void baglantiKontrol() {
   if (bluetoothBagli && (simdikiZaman - sonVeriMillis > 8000)) {
     bluetoothBagli = false;
     
-    // Sadece Serial'a log yaz (LCD'de son değerler kalsın)
+    // LCD'yi güncelle
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("BT Kesildi!");
+    
+    // GPS koordinatları varsa göster
+    if (enlem != 0.0 || boylam != 0.0) {
+      lcd.setCursor(0, 1);
+      lcd.print(enlem, 3);  // 3 ondalık
+      lcd.print(",");
+      lcd.print(boylam, 3);
+    }
+    
+    sonDurum = "DISCONNECTED";
+    
+    // Serial log
     Serial.println("\n=== BAGLANTI KESILDI ===");
     Serial.print("Son Hiz: ");
     Serial.print(hiz, 1);
@@ -266,7 +294,7 @@ void baglantiKontrol() {
     Serial.println(" km");
     
     if (enlem != 0.0 || boylam != 0.0) {
-      Serial.print("Son GPS Konum: ");
+      Serial.print("GPS Konum: ");
       Serial.print(enlem, 6);
       Serial.print(", ");
       Serial.println(boylam, 6);
@@ -278,16 +306,16 @@ void baglantiKontrol() {
 // ==================== TEST SENARYOSU ====================
 
 // Test verileri Flash belleğe al (RAM'i korumak için)
-const char testVeri0[] PROGMEM = "SPEED:0.00,DIST:0.00,LAT:41.036758,LON:28.985033";
-const char testVeri1[] PROGMEM = "SPEED:15.50,DIST:0.04,LAT:41.037012,LON:28.985234";
-const char testVeri2[] PROGMEM = "SPEED:32.80,DIST:0.12,LAT:41.037456,LON:28.985678";
-const char testVeri3[] PROGMEM = "SPEED:45.20,DIST:0.28,LAT:41.038123,LON:28.986245";
-const char testVeri4[] PROGMEM = "SPEED:52.00,DIST:0.51,LAT:41.038934,LON:28.987012";
-const char testVeri5[] PROGMEM = "SPEED:48.70,DIST:0.78,LAT:41.039678,LON:28.987834";
-const char testVeri6[] PROGMEM = "SPEED:35.40,DIST:1.02,LAT:41.040234,LON:28.988456";
-const char testVeri7[] PROGMEM = "SPEED:25.10,DIST:1.18,LAT:41.040612,LON:28.988912";
-const char testVeri8[] PROGMEM = "SPEED:12.30,DIST:1.28,LAT:41.040834,LON:28.989234";
-const char testVeri9[] PROGMEM = "SPEED:0.00,DIST:1.32,LAT:41.041002,LON:28.989456";
+const char testVeri0[] PROGMEM = "SPEED:0.00,DIST:0.000,LAT:41.036758,LON:28.985033";
+const char testVeri1[] PROGMEM = "SPEED:15.50,DIST:0.040,LAT:41.037012,LON:28.985234";
+const char testVeri2[] PROGMEM = "SPEED:32.80,DIST:0.120,LAT:41.037456,LON:28.985678";
+const char testVeri3[] PROGMEM = "SPEED:45.20,DIST:0.280,LAT:41.038123,LON:28.986245";
+const char testVeri4[] PROGMEM = "SPEED:52.00,DIST:0.510,LAT:41.038934,LON:28.987012";
+const char testVeri5[] PROGMEM = "SPEED:48.70,DIST:0.780,LAT:41.039678,LON:28.987834";
+const char testVeri6[] PROGMEM = "SPEED:35.40,DIST:1.020,LAT:41.040234,LON:28.988456";
+const char testVeri7[] PROGMEM = "SPEED:25.10,DIST:1.180,LAT:41.040612,LON:28.988912";
+const char testVeri8[] PROGMEM = "SPEED:12.30,DIST:1.280,LAT:41.040834,LON:28.989234";
+const char testVeri9[] PROGMEM = "SPEED:0.00,DIST:1.320,LAT:41.041002,LON:28.989456";
 
 const char* const testVerileri[] PROGMEM = {
   testVeri0, testVeri1, testVeri2, testVeri3, testVeri4,

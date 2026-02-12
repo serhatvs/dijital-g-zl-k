@@ -314,9 +314,9 @@ void loop() {
 
 ## 5. PROJE İÇİN ÖNEMLİ NOTLAR
 
-### HC-05 ve Upload Sorunu
+### HC-06 ve Upload Sorunu
 
-**Problem:** Arduino'ya kod yüklerken HC-05 RX/TX pinlerine bağlıysa çakışma olur.
+**Problem:** Arduino'ya kod yüklerken HC-06 RX/TX pinlerine bağlıysa çakışma olur.
 
 **Çözüm 1:** SoftwareSerial kullan (bizim projede zaten var)
 ```cpp
@@ -338,7 +338,7 @@ Klon Arduino'lar orijinalden daha fazla güç çekebilir:
 ```
 Orijinal Arduino Uno: ~50mA (idle)
 Klon Arduino Uno: ~50-80mA (idle)
-HC-05 Bluetooth: ~50mA (bağlı)
+HC-06 Bluetooth: ~50mA (bağlı)
 LCD 16x2: ~20mA
 Toplam: ~150-200mA
 

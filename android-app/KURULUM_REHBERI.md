@@ -114,7 +114,7 @@ android-app/
 ## Kod Özellikleri
 
 ### ✅ BluetoothManager.kt
-- HC-05 bağlantı yönetimi
+- HC-06 bağlantı yönetimi
 - Eşleştirilmiş cihazları listele
 - Veri gönderimi (SPEED:X,DIST:Y)
 - Kotlin Flow ile reaktif
@@ -182,7 +182,7 @@ adb devices
 ```
 
 ### Bluetooth Bağlanmıyor:
-- HC-05 eşleştirildi mi? (Ayarlar → Bluetooth)
+- HC-06 eşleştirildi mi? (Ayarlar → Bluetooth)
 - Arduino açık mı?
 - Bluetooth izni verildi mi?
 

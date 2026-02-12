@@ -4,7 +4,7 @@ Arduino Uno tabanlı GPS hız ölçüm sistemi. Mobil uygulama ile GPS verilerin
 
 ## 📋 Proje Özellikleri
 
-- **Arduino Uno** + HC-05 Bluetooth + 16x2 LCD I2C
+- **Arduino Uno** + HC-06 Bluetooth + 16x2 LCD I2C
 - **Android Native App** (Kotlin MVVM mimarisi)
 - GPS hız takibi (m/s → km/h dönüşümü)
 - Haversine formülü ile mesafe hesaplama
@@ -15,7 +15,7 @@ Arduino Uno tabanlı GPS hız ölçüm sistemi. Mobil uygulama ile GPS verilerin
 
 ### Arduino Sistemi
 - Arduino Uno (veya klon CH340 USB chip)
-- HC-05/HC-06 Bluetooth modülü
+- HC-06 Bluetooth modülü
 - 16x2 LCD ekran (I2C adaptör ile)
 - Breadboard ve jumper kablolar
 - 5V güç kaynağı
@@ -58,7 +58,7 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 
 1. **Arduino'yu güç ver** → LCD'de "Bluetooth Bekliyor..." mesajı görünür
 2. **Android uygulamayı aç** → İzinleri ver (Bluetooth + GPS)
-3. **HC-05'e bağlan** → Eşleştirilmiş cihazlardan seç
+3. **HC-06'ye bağlan** → Eşleştirilmiş cihazlardan seç
 4. **GPS sinyali al** → Hareket ettikçe hız ve mesafe gösterilir
 5. **LCD ekranda göster** → Arduino LCD'de anlık veri
 

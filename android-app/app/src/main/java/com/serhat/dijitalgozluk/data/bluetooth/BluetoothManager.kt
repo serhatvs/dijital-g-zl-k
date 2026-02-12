@@ -19,9 +19,9 @@ import java.io.OutputStream
 import java.util.UUID
 
 /**
- * Bluetooth Classic (HC-05/HC-06) bağlantı yöneticisi
+ * Bluetooth Classic (HC-06) bağlantı yöneticisi
  *
- * Bu sınıf, Arduino'ya bağlı HC-05 Bluetooth modülü ile
+ * Bu sınıf, Arduino'ya bağlı HC-06 Bluetooth modülü ile
  * seri iletişim kurmayı sağlar.
  */
 class BluetoothManager(private val context: Context) {
@@ -31,7 +31,7 @@ class BluetoothManager(private val context: Context) {
     private var outputStream: OutputStream? = null
     private var lastDeviceAddress: String? = null
 
-    // HC-05/HC-06 için standart Serial Port Profile UUID
+    // HC-06 için standart Serial Port Profile UUID
     companion object {
         private val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
         private const val TAG = "BluetoothManager"
@@ -65,7 +65,7 @@ class BluetoothManager(private val context: Context) {
             BluetoothDeviceInfo(
                 name = device.name ?: "Unknown",
                 address = device.address,
-                isHC05 = device.name?.startsWith("HC-") == true
+                isHC06 = device.name?.startsWith("HC-") == true
             )
         } ?: emptyList()
 
@@ -185,6 +185,6 @@ class BluetoothManager(private val context: Context) {
 data class BluetoothDeviceInfo(
     val name: String,
     val address: String,
-    val isHC05: Boolean = false
+    val isHC06: Boolean = false
 )
 

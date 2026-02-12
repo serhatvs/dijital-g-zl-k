@@ -107,7 +107,7 @@ class SpeedViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 _uiState.value = _uiState.value?.copy(
                     isConnecting = false,
-                    error = "Bluetooth bağlantısı başarısız. HC-05 açık mı?"
+                    error = "Bluetooth bağlantısı başarısız. HC-06 açık mı?"
                 )
             }
         }

@@ -11,6 +11,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import java.util.Locale
 import kotlin.math.*
 
 /**
@@ -34,6 +35,9 @@ class GPSManager(private val context: Context) {
         private const val UPDATE_INTERVAL = 1000L // 1 saniye
         private const val FASTEST_INTERVAL = 500L // Minimum 0.5 saniye
         private const val EARTH_RADIUS_KM = 6371.0
+        private const val MIN_DISTANCE_KM = 0.001 // 1 metre (küçük mesafe eşiği)
+        private const val MAX_JUMP_DISTANCE_KM = 0.03 // 30 metre (teleportasyon filtresi)
+        private const val MIN_TIME_DIFF_SECONDS = 0.5 // Minimum zaman farkı (hızlı güncellemeleri engelle)
     }
 
     /**
@@ -57,13 +61,21 @@ class GPSManager(private val context: Context) {
             UPDATE_INTERVAL
         ).apply {
             setMinUpdateIntervalMillis(FASTEST_INTERVAL)
-            setWaitForAccurateLocation(true)
+            setMinUpdateDistanceMeters(0.5f) // 0.5 metre - küçük mesafeleri de yakala
+            setWaitForAccurateLocation(true) // Yüksek doğruluk bekle
+            setMaxUpdateDelayMillis(UPDATE_INTERVAL) // Maksimum gecikme
         }.build()
 
         // LocationCallback
         val locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 result.lastLocation?.let { location ->
+                    // GPS doğruluğu kontrolü
+                    if (location.accuracy > 50f) {
+                        android.util.Log.w(TAG, "Low GPS accuracy: ${location.accuracy}m - waiting for better signal")
+                        // Düşük doğrulukta da gönder ama uyar
+                    }
+                    
                     val locationData = processLocation(location)
                     trySend(locationData)
                 }
@@ -91,11 +103,10 @@ class GPSManager(private val context: Context) {
      */
     private fun processLocation(location: Location): LocationData {
         var speedKMH = 0f
-        var distance = 0.0
         
         // Mesafe ve hız hesaplama
         if (lastLocation != null) {
-            distance = calculateDistance(
+            val distance = calculateDistance(
                 lastLocation!!.latitude,
                 lastLocation!!.longitude,
                 location.latitude,
@@ -105,22 +116,31 @@ class GPSManager(private val context: Context) {
             // Zaman farkı (saniye)
             val timeDiffSeconds = (location.time - lastLocation!!.time) / 1000.0
             
-            // EMüLATÖR FİLTRESİ: Mantıksız sıçramaları yoksay
-            // 1. Çok kısa zaman aralığı (< 0.3 saniye) - güncelleme çok hızlı
-            // 2. Çok büyük mesafe (> 0.1 km = 100m) - teleportasyon
-            val isSuspiciousJump = timeDiffSeconds < 0.3 || distance > 0.1
+            // HASSAS FİLTRELEME:
+            // 1. Çok kısa zaman aralığı (< 0.5 saniye) - güncelleme çok hızlı
+            // 2. Çok büyük mesafe (> 30m) - teleportasyon veya GPS hatası
+            val isTooFast = timeDiffSeconds < MIN_TIME_DIFF_SECONDS
+            val isTeleportation = distance > MAX_JUMP_DISTANCE_KM
             
-            if (!isSuspiciousJump && timeDiffSeconds > 0) {
-                // Normal güncelleme - mesafe ekle
+            if (!isTooFast && !isTeleportation && timeDiffSeconds > 0) {
+                // Mesafeyi her durumda ekle (küçük mesafeler de önemli)
                 totalDistance += distance
                 
-                // Hız hesapla (mesafe/zaman)
-                if (distance > 0) {
+                // Hız hesaplama - sadece anlamlı mesafelerde (>1m)
+                if (distance >= MIN_DISTANCE_KM) {
                     // km / (s/3600) = km/h
                     val calculatedSpeed = ((distance / timeDiffSeconds) * 3600).toFloat()
-                    // Maksimum hız sınırı: 200 km/h (emulator hatalarını engelle)
+                    // Maksimum hız sınırı: 200 km/h
                     speedKMH = minOf(calculatedSpeed, 200f)
+                    
+                    android.util.Log.d(TAG, "Distance: ${distance * 1000}m, Speed: $speedKMH km/h, Accuracy: ${location.accuracy}m")
+                } else {
+                    // Çok küçük mesafe - önceki hızı koru
+                    android.util.Log.d(TAG, "Distance too small: ${distance * 1000}m, keeping previous speed")
                 }
+            } else {
+                if (isTooFast) android.util.Log.d(TAG, "Update too fast: ${timeDiffSeconds}s")
+                if (isTeleportation) android.util.Log.d(TAG, "Teleportation detected: ${distance * 1000}m")
             }
         }
         
@@ -211,20 +231,34 @@ data class LocationData(
 ) {
     /**
      * Format edilmiş hız string
+     * Locale.US kullanarak her zaman nokta (.) ondalık ayırıcısı kullanır
      */
-    fun getFormattedSpeed(): String = "%.2f".format(speedKMH)
+    fun getFormattedSpeed(): String = String.format(Locale.US, "%.2f", speedKMH)
 
     /**
      * Format edilmiş mesafe string
+     * Locale.US kullanarak her zaman nokta (.) ondalık ayırıcısı kullanır
      */
-    fun getFormattedDistance(): String = "%.2f".format(totalDistanceKM)
+    fun getFormattedDistance(): String = String.format(Locale.US, "%.3f", totalDistanceKM)
 
     /**
      * Arduino'ya gönderilecek veri formatı
-     * Format: SPEED:45.50,DIST:1.32,LAT:41.008240,LON:28.978359\n
+     * Format: SPEED:45.50,DIST:1.320,LAT:41.008240,LON:28.978359\n
+     * Distance: 3 ondalık (1 metre hassasiyet)
+     * LAT/LON: 6 ondalık (0.11 metre hassasiyet)
+     * 
+     * ÖNEMLİ: Locale.US kullanılarak her zaman nokta (.) ondalık ayırıcısı kullanılır.
+     * Türkiye gibi vergül (,) kullanan ülkelerde bile Arduino nokta bekliyor!
      */
     fun toBluetoothData(): String {
-        return "SPEED:${getFormattedSpeed()},DIST:${getFormattedDistance()},LAT:%.6f,LON:%.6f\n".format(latitude, longitude)
+        return String.format(
+            Locale.US,
+            "SPEED:%s,DIST:%s,LAT:%.6f,LON:%.6f\n",
+            getFormattedSpeed(),
+            getFormattedDistance(),
+            latitude,
+            longitude
+        )
     }
 }
 

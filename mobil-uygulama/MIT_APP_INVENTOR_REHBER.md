@@ -245,7 +245,7 @@ do
       set Clock1.TimerEnabled to true
     else
       set Label_Durum.Text to "Bağlantı Hatası!"
-      call Notifier1.ShowAlert(message = "HC-05'e bağlanılamadı. Cihazın açık olduğundan emin olun.")
+      call Notifier1.ShowAlert(message = "HC-06'ye bağlanılamadı. Cihazın açık olduğundan emin olun.")
 ```
 
 ```blocks
@@ -498,7 +498,7 @@ Uygulama şu izinleri gerektirir:
 ### Bluetooth Bağlanmıyor
 
 **Çözüm:**
-- HC-05 eşleştirildi mi? (PIN: 1234)
+- HC-06 eşleştirildi mi? (PIN: 1234)
 - Arduino açık mı?
 - MAC adresi doğru seçildi mi?
 - Başka uygulama Bluetooth kullanmıyor mu?

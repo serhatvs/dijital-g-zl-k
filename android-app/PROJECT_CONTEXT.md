@@ -1,12 +1,12 @@
 # Digital Glasses - GPS Speed Measurement Android App
 
 ## Project Overview
-Android application that reads GPS speed and distance, then transmits data via Bluetooth to Arduino Uno with HC-05 module. Arduino displays the data on 16x2 LCD screen.
+Android application that reads GPS speed and distance, then transmits data via Bluetooth to Arduino Uno with HC-06 module. Arduino displays the data on 16x2 LCD screen.
 
 ## Technical Requirements
 
 ### Hardware Communication
-- **Bluetooth Module:** HC-05 (SPP - Serial Port Profile)
+- **Bluetooth Module:** HC-06 (SPP - Serial Port Profile)
 - **UUID:** `00001101-0000-1000-8000-00805F9B34FB` (Standard SPP UUID)
 - **Baud Rate:** 9600
 - **Arduino Board:** Arduino Uno (with SoftwareSerial on pins 10, 11)
@@ -31,7 +31,7 @@ Android application that reads GPS speed and distance, then transmits data via B
 ### MVVM Pattern
 - **MainActivity:** UI layer, displays speed/distance, Bluetooth connection status
 - **SpeedViewModel:** Business logic, manages LiveData for UI updates
-- **BluetoothManager:** Handles HC-05 connection, pairing, data transmission
+- **BluetoothManager:** Handles HC-06 connection, pairing, data transmission
 - **GPSManager:** Manages location updates, speed calculation, distance tracking
 
 ### Key Components
@@ -39,7 +39,7 @@ Android application that reads GPS speed and distance, then transmits data via B
 #### BluetoothManager.kt
 ```kotlin
 // Responsibilities:
-// - Scan for HC-05 devices
+// - Scan for HC-06 devices
 // - Connect using SPP UUID
 // - Send formatted string data
 // - Monitor connection state
@@ -96,7 +96,7 @@ implementation("com.google.android.gms:play-services-location:21.0.1")
 - **Distance Display:** TextView showing cumulative distance in km
 - **Bluetooth Status:** Indicator (connected/disconnected)
 - **GPS Status:** Indicator (enabled/disabled)
-- **Connect Button:** Pair and connect to HC-05
+- **Connect Button:** Pair and connect to HC-06
 - **Reset Button:** Reset distance counter to 0
 - **Start/Stop Button:** Begin/end tracking
 
@@ -130,7 +130,7 @@ fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): D
 ## Error Handling
 - Bluetooth not available: Show error dialog
 - GPS disabled: Prompt user to enable location
-- No HC-05 found: List available devices, manual selection
+- No HC-06 found: List available devices, manual selection
 - Connection lost: Auto-reconnect with 3 retry attempts
 - Permission denied: Explain why permissions are needed
 
