@@ -1,6 +1,6 @@
 # 🌅 SABAH DEVAM - DİJİTAL GÖZLÜK PROJESİ
 
-**Tarih:** 12 Şubat 2026
+**Tarih:** 22 Şubat 2026
 
 ## ✅ TAMAMLANANLAR (Dün Gece)
 
@@ -151,6 +151,20 @@ Arduino D11 → 1kΩ → HC-05 RX
 - [ ] Arduino kutu tasarımı (3D print)
 - [ ] Güç kaynağı seçimi (powerbank/batarya)
 - [ ] Montaj rehberi fotoğrafları
+
+---
+
+## 🆕 Ek Yapılacaklar
+
+- [ ] IMU verisi ile EKF entegrasyonu
+- [ ] EKF parametrelerinin optimize edilmesi
+- [ ] EKF ve Kalman karşılaştırmalı testler
+- [ ] Mobil uygulamada filtre seçimi arayüzü
+- [ ] Dokümantasyon ve rehber güncellemesi
+- [ ] Gerçek saha verisi ile performans analizi
+- [ ] PCB tasarımı ve üretim dosyalarının hazırlanması
+- [ ] PCB bileşen listesi (BOM) oluşturulması
+- [ ] PCB test ve doğrulama planı hazırlanması
 
 ---
 
