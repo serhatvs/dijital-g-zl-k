@@ -24,6 +24,13 @@ import kotlin.math.*
  * - İki nokta arası mesafe (Haversine formülü)
  */
 class GPSManager(private val context: Context) {
+    // EKF entegrasyonu
+    private val ekf = EKF(
+        state = doubleArrayOf(0.0, 0.0, 0.0, 0.0),
+        P = Array(4) { DoubleArray(4) { 1.0 } },
+        Q = Array(4) { DoubleArray(4) { 0.01 } },
+        R = Array(4) { DoubleArray(4) { 0.1 } }
+    )
 
     private val fusedLocationClient: FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(context)
@@ -33,10 +40,9 @@ class GPSManager(private val context: Context) {
     private var lastLocation: Location? = null
     private var totalDistance: Double = 0.0 // kilometre
     
-    // MOVING AVERAGE BUFFER - GPS smoothing için
-    private val speedBuffer = mutableListOf<Float>()
-    private val distanceBuffer = mutableListOf<Double>()
-    private var bufferCounter = 0
+    // Kalman filtreleri
+    private val speedKalman = KalmanFilter(processNoise = 0.5f, measurementNoise = 2f, estimatedError = 1f, lastEstimate = 0f)
+    private val distanceKalman = KalmanFilter(processNoise = 0.01f, measurementNoise = 0.1f, estimatedError = 1f, lastEstimate = 0f)
 
     companion object {
         private const val TAG = "GPSManager"
@@ -83,33 +89,30 @@ class GPSManager(private val context: Context) {
                     if (location.accuracy > 50f) {
                         android.util.Log.w(TAG, "Low GPS accuracy: ${location.accuracy}m - waiting for better signal")
                     }
-                    
-                    val locationData = processLocation(location)
-                    
-                    // Buffer'a ekle
-                    speedBuffer.add(locationData.speedKMH)
-                    distanceBuffer.add(locationData.totalDistanceKM)
-                    bufferCounter++
-                    
-                    // 10 örnek toplandığında ortalama al ve gönder
-                    if (bufferCounter >= BUFFER_SIZE) {
-                        val avgSpeed = speedBuffer.average().toFloat()
-                        val avgDistance = distanceBuffer.average()
-                        
-                        val smoothedData = locationData.copy(
-                            speedKMH = avgSpeed,
-                            totalDistanceKM = avgDistance
-                        )
-                        
-                        android.util.Log.d(TAG, "Smoothed: Speed ${avgSpeed} km/h (${speedBuffer.size} samples), Dist ${avgDistance} km")
-                        
-                        trySend(smoothedData)
-                        
-                        // Buffer'ı temizle
-                        speedBuffer.clear()
-                        distanceBuffer.clear()
-                        bufferCounter = 0
-                    }
+                    // EKF predict (ivme yoksa 0 gir)
+                    val dt = if (lastLocation != null) (location.time - lastLocation!!.time) / 1000.0 else 0.1
+                    val ax = 0.0 // IMU yoksa 0
+                    val ay = 0.0 // IMU yoksa 0
+                    ekf.predict(dt, ax, ay)
+                    // Ölçüm: [lat, lon, hız, eğim] (eğim yoksa 0)
+                    val speed = if (location.hasSpeed()) location.speed.toDouble() else 0.0
+                    val measurement = doubleArrayOf(location.latitude, location.longitude, speed, 0.0)
+                    ekf.update(measurement)
+                    val state = ekf.getState()
+                    val ekfData = LocationData(
+                        latitude = state[0],
+                        longitude = state[1],
+                        speedMS = state[2].toFloat(),
+                        speedKMH = (state[2] * 3.6).toFloat(),
+                        totalDistanceKM = locationData.totalDistanceKM, // mesafe klasik hesap
+                        accuracy = location.accuracy,
+                        timestamp = location.time,
+                        temperature = null,
+                        temperatureSource = "NONE"
+                    )
+                    android.util.Log.d(TAG, "EKF: Lat ${state[0]}, Lon ${state[1]}, Speed ${state[2]}")
+                    trySend(ekfData)
+                    lastLocation = location
                 }
             }
         }
