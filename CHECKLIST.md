@@ -11,15 +11,15 @@
 - [x] Telefonda yükleme ve izinlerin verilmesi
 
 ## 25 Şubat 2026
-- [ ] Gerçek test: Arduino hazır, LCD "BT Bekleniyor..." gösteriyor
-- [ ] Telefonda uygulama aç, Bluetooth ve GPS izinlerini ver
-- [ ] HC-06 eşleştir, "Cihaz Seç" ve "Bağlan" işlemleri
-- [ ] Telefonu hareket ettir, LCD'de hız ve mesafe gör
-- [ ] Veri formatı: SPEED:X.X,DIST:Y.YY,LAT:Z,LON:W
+- [X] Gerçek test: Arduino hazır, LCD "BT Bekleniyor..." gösteriyor
+- [X] Telefonda uygulama aç, Bluetooth ve GPS izinlerini ver
+- [X] HC-06 eşleştir, "Cihaz Seç" ve "Bağlan" işlemleri
+- [X] Telefonu hareket ettir, LCD'de hız ve mesafe gör
+- [X] Veri formatı: SPEED:X.X,DIST:Y.YY,LAT:Z,LON:W
 
 ## 26 Şubat 2026
-- [ ] Arduino compile & upload işlemleri
-- [ ] Emulator başlatma ve test ([~/Android/Sdk/emulator/emulator -avd Pixel_5 ...](SABAH_DEVAM.md))
+- [X] Arduino compile & upload işlemleri
+- [X] Emulator başlatma ve test ([~/Android/Sdk/emulator/emulator -avd Pixel_5 ...](SABAH_DEVAM.md))
 
 ## 27 Şubat 2026
 - [ ] Bilinen sorunların kontrolü: KVM izni, HC-06 baud rate, LCD I2C address, RAM kullanımı
