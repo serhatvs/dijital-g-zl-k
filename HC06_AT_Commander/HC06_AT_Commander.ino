@@ -1,70 +1,49 @@
-/*
- * HC-06 AT KOMUT MODU
- * 
- * Bu kod ile HC-06 Bluetooth modülünün ayarlarını değiştirebilirsiniz:
- * - Baud rate (hız)
- * - İsim
- * - PIN kod
- * 
- * KULLANIM:
- * 1. Bu kodu Arduino'ya yükleyin
- * 2. Serial Monitor'u açın (9600 baud)
- * 3. HC-06'nın LED'i yanıp sönsün (unpaired - bağlantısız)
- * 4. AT komutlarını gönderin
- * 
- * ÖNEMLİ KOMUTLAR:
- * AT           -> Test (Yanıt: OK)
- * AT+VERSION   -> Versiyon bilgisi
- * AT+BAUD8     -> 115200 baud ayarla
- * AT+NAMEKayakCam -> İsim değiştir
- * AT+PIN1234   -> PIN değiştir
- */
-
 #include <SoftwareSerial.h>
-
-#define BT_RX 10  // Arduino RX -> HC-06 TX
-#define BT_TX 11  // Arduino TX -> HC-06 RX
-
-SoftwareSerial bluetooth(BT_RX, BT_TX);
-
-void setup() {
-  // Bilgisayar ile iletişim
-  Serial.begin(9600);
-  Serial.println("==============================");
-  Serial.println("   HC-06 AT COMMANDER");
-  Serial.println("==============================");
-  Serial.println();
-  Serial.println("HC-06 LED yanip sondugunden emin olun!");
-  Serial.println("(Bluetooth baglantisi olmamali)");
-  Serial.println();
-  Serial.println("--- KULLANILABILIR KOMUTLAR ---");
-  Serial.println("AT             -> Test (OK donmeli)");
-  Serial.println("AT+VERSION     -> Versiyon");
-  Serial.println("AT+BAUD4       -> 9600 baud (varsayilan)");
-  Serial.println("AT+BAUD7       -> 57600 baud (tavsiye)");
-  Serial.println("AT+BAUD8       -> 115200 baud (max)");
-  Serial.println("AT+NAMEKayakCam -> Isim degistir");
-  Serial.println("AT+PIN1234     -> PIN degistir");
-  Serial.println();
-  Serial.println("Bekleniyor...");
-  Serial.println("==============================");
-  
-  // HC-06 ile iletişim (varsayılan 9600 baud)
-  bluetooth.begin(9600);
+SoftwareSerial hcSerial(10, 11); // RX, TX
+ 
+String fromPC = "";
+ 
+void setup() { 
+  Serial.begin(9600); // hardware serial for the USB-PC
+  hcSerial.begin(9600);  // software serial Arduino to HC-06 (9600 is default)
+ 
+  // print instructions
+  Serial.println("HC-06 AT Command Programming");
+  Serial.println(" -- Command Reference ---");
+  Serial.println("AT (simply checks connection)");
+  Serial.println("AT+VERSION (sends the firmware verison)");
+  Serial.println("AT+NAMExxxxx (to change name to xxxxx");
+  Serial.println("AT+PINnnnn (to change password to 4 digit nnnn");
+  Serial.println("AT+BAUDn (to change to baud rate #1");
+  Serial.println("  BAUD1 = 1200");
+  Serial.println("  BAUD2 = 2400");
+  Serial.println("  BAUD3 = 4800");
+  Serial.println("  BAUD4 = 9600");
+  Serial.println("  BAUD5 = 19200");
+  Serial.println("  BAUD6 = 38400");
+  Serial.println("  BAUD7 = 57600");
+  Serial.println("  BAUD8 = 115200");
 }
-
+ 
 void loop() {
-  // Bilgisayardan gelen komutları HC-06'ya gönder
-  if (Serial.available()) {
-    char c = Serial.read();
-    bluetooth.write(c);
-    // Echo - ne gönderildiğini göster
-    Serial.write(c);
+  // Read from HC-06
+  if (hcSerial.available()) {
+    while(hcSerial.available()) { // While there is more to be read, keep reading.
+      Serial.print((char)hcSerial.read());
+      }   
   }
+   
+  // Read from PC
+  if (Serial.available()){
+    delay(10); //     
+    fromPC = (char)Serial.read();    
   
-  // HC-06'dan gelen yanıtları bilgisayara gönder
-  if (bluetooth.available()) {
-    char c = bluetooth.read();
-    Serial.write(c);
+    if (fromPC == "r" || fromPC == "n") {  // don't send carriage returns to HC-06          
+      Serial.println();  // echo it back to the PC
+    }
+    else {
+      hcSerial.print(fromPC); // show the HC-06 responce
+      Serial.print(fromPC); // echo it back to the PC
+    }
   }
 }
